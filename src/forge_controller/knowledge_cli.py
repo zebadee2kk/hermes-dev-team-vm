@@ -14,10 +14,10 @@ from .knowledge import (
     KnowledgeStore,
     PromotionPolicy,
     TechnologyCandidate,
-    WikiPage,
     assess_candidate_signal,
     evaluate_promotion,
 )
+from .knowledge_assurance import CompiledKnowledgeAssurance, StructuredWikiPage
 
 
 def _add_promotion_arguments(parser: argparse.ArgumentParser) -> None:
@@ -41,11 +41,11 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--media-type", default="text/markdown")
 
     compile_page = commands.add_parser(
-        "compile", help="validate and compile one WikiPage JSON/YAML"
+        "compile", help="validate and compile one structured WikiPage JSON/YAML"
     )
     compile_page.add_argument("--page", required=True)
 
-    commands.add_parser("lint", help="lint the compiled wiki")
+    commands.add_parser("lint", help="lint compiled wiki, fact conflicts and staleness")
 
     signal = commands.add_parser("signal", help="score a technology candidate evidence packet")
     for name in CandidateSignalInput.model_fields:
@@ -101,6 +101,7 @@ def _load_promotion_inputs(
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     store = KnowledgeStore(args.root)
+    assurance = CompiledKnowledgeAssurance(store)
 
     if args.command == "ingest":
         file_path = Path(args.file)
@@ -116,14 +117,20 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "compile":
-        page = WikiPage.model_validate(_load_structured(args.page))
-        print(store.compile_page(page))
+        page = StructuredWikiPage.model_validate(_load_structured(args.page))
+        print(assurance.compile_page(page))
         return 0
 
     if args.command == "lint":
-        report = store.lint()
+        report = assurance.lint()
         _print_json(report.model_dump(mode="json"))
-        return 1 if report.broken_links or report.unknown_source_refs else 0
+        failures = (
+            report.broken_links
+            or report.unknown_source_refs
+            or report.contradictions
+            or report.stale_pages
+        )
+        return 1 if failures else 0
 
     if args.command == "signal":
         payload = {name: bool(getattr(args, name)) for name in CandidateSignalInput.model_fields}
