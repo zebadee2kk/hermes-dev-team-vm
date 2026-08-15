@@ -55,17 +55,6 @@ _EXTERNAL_SOURCE_KINDS = {
     "webhook",
 }
 
-_ALLOWED_SOURCE_KEYS = {
-    "kind",
-    "locator",
-    "connector",
-    "agent_id",
-    "deployment_id",
-    "repository",
-    "url",
-    "message_id",
-}
-
 
 class SourceDescriptor(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -105,34 +94,51 @@ class HeuristicInjectionProbe:
             "ignore-instructions",
             "high",
             "instruction_override",
-            re.compile(r"\b(ignore|disregard|override)\b.{0,60}\b(previous|prior|system|developer)\b", re.I | re.S),
+            re.compile(
+                r"\b(ignore|disregard|override)\b.{0,60}"
+                r"\b(previous|prior|system|developer)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
         ),
         (
             "system-prompt-request",
             "high",
             "secret_or_policy_extraction",
-            re.compile(r"\b(system prompt|developer message|hidden instructions?)\b", re.I),
+            re.compile(
+                r"\b(system prompt|developer message|hidden instructions?)\b",
+                re.IGNORECASE,
+            ),
         ),
         (
             "secret-exfiltration",
             "high",
             "credential_exfiltration",
             re.compile(
-                r"\b(reveal|print|send|upload|exfiltrate|return)\b.{0,80}\b(secret|token|password|api[-_ ]?key|credential)\b",
-                re.I | re.S,
+                r"\b(reveal|print|send|upload|exfiltrate|return)\b.{0,80}"
+                r"\b(secret|token|password|api[-_ ]?key|credential)\b",
+                re.IGNORECASE | re.DOTALL,
             ),
         ),
         (
             "tool-coercion",
             "medium",
             "tool_instruction",
-            re.compile(r"\b(run|execute|call)\b.{0,50}\b(shell|terminal|tool|curl|powershell|bash)\b", re.I | re.S),
+            re.compile(
+                r"\b(run|execute|call)\b.{0,50}"
+                r"\b(shell|terminal|tool|curl|powershell|bash)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
         ),
         (
             "concealment",
             "medium",
             "concealment",
-            re.compile(r"\b(do not|don't|never)\b.{0,40}\b(tell|show|mention|inform)\b.{0,40}\b(user|owner|reviewer)\b", re.I | re.S),
+            re.compile(
+                r"\b(do not|don't|never)\b.{0,40}"
+                r"\b(tell|show|mention|inform)\b.{0,40}"
+                r"\b(user|owner|reviewer)\b",
+                re.IGNORECASE | re.DOTALL,
+            ),
         ),
     )
 
@@ -207,7 +213,10 @@ class TrustGateway:
             effective = _worst_trust([effective, TrustClass.SUSPICIOUS])
 
         # A derived summary/handoff cannot remove external influence merely because a local agent wrote it.
-        if "external_content" in taint and _TRUST_RISK[effective] < _TRUST_RISK[TrustClass.UNTRUSTED_EXTERNAL]:
+        if (
+            "external_content" in taint
+            and _TRUST_RISK[effective] < _TRUST_RISK[TrustClass.UNTRUSTED_EXTERNAL]
+        ):
             effective = TrustClass.UNTRUSTED_EXTERNAL
 
         return TrustEnvelope(
