@@ -3,14 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from redis.asyncio import Redis
-
-_RELEASE_IF_OWNER = """
-if redis.call('get', KEYS[1]) == ARGV[1] then
-  return redis.call('del', KEYS[1])
-else
-  return 0
-end
-"""
+from redis.exceptions import WatchError
 
 
 class RedisStateStore:
@@ -41,5 +34,21 @@ class RedisStateStore:
         return bool(await self.client.set(f"forge:lease:{resource}", owner, ex=ttl_seconds, nx=True))
 
     async def release_lease(self, resource: str, owner: str) -> bool:
-        result = await self.client.eval(_RELEASE_IF_OWNER, 1, f"forge:lease:{resource}", owner)
-        return bool(result)
+        """Delete a lease only if it still belongs to owner, using optimistic locking."""
+        key = f"forge:lease:{resource}"
+        while True:
+            async with self.client.pipeline(transaction=True) as pipe:
+                try:
+                    await pipe.watch(key)
+                    current = await pipe.get(key)
+                    if isinstance(current, bytes):
+                        current = current.decode()
+                    if current != owner:
+                        await pipe.unwatch()
+                        return False
+                    pipe.multi()
+                    pipe.delete(key)
+                    result = await pipe.execute()
+                    return bool(result and result[0])
+                except WatchError:
+                    continue
