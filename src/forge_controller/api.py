@@ -8,8 +8,9 @@ from hmac import compare_digest
 from fastapi import FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from .contracts import InferenceDeployment, RealityAnchor, TaskCapsule, TrustEnvelope
+from .contracts import InferenceDeployment, RealityAnchor, TaskCapsule
 from .decision import classify_decision
+from .governance_api import router as governance_router
 from .model_gateway import (
     ModelGatewayUnavailable,
     UnknownForgeModel,
@@ -60,6 +61,7 @@ def create_app(
             await engine.dispose()
 
     app = FastAPI(title="Hermes Forge Controller", version="0.5.0", lifespan=lifespan)
+    app.include_router(governance_router)
 
     def repository(request: Request) -> AssuranceRepository:
         return request.app.state.repository
@@ -148,11 +150,6 @@ def create_app(
     async def anchor_record(anchor: RealityAnchor, request: Request) -> RealityAnchor:
         await repository(request).record_anchor(anchor)
         return anchor
-
-    @app.post("/v1/trust-envelopes", response_model=TrustEnvelope)
-    async def trust_envelope_record(envelope: TrustEnvelope, request: Request) -> TrustEnvelope:
-        await repository(request).record_trust_envelope(envelope)
-        return envelope
 
     @app.put("/v1/deployments", response_model=InferenceDeployment)
     async def deployment_upsert(
