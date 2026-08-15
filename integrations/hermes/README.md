@@ -9,7 +9,8 @@ This directory binds current upstream Hermes Agent primitives to Forge without d
 - Hermes profiles use stable Forge model aliases (`forge/coding`, `forge/review`, etc.).
 - The Forge Model Gateway selects an eligible Inference Deployment on every model request and forwards to the exact LiteLLM alias.
 - `delegate_task` remains short-lived fork/join reasoning only.
-- Forge MCP exposes only narrow assurance/governance operations: latest/checkpoint Task Capsule, record Reality Anchor, record Trust Envelope, and classify Decision Request.
+- Forge MCP exposes narrow assurance/governance operations plus **read-only** compiled-wiki search/read/lint.
+- Trusted knowledge acquisition, raw mutation, compilation, semantic stale mutation and technology promotion are deliberately not worker MCP tools.
 - Routing is implicit through the Model Gateway; workers cannot pick a provider deployment through MCP.
 - Worker shell processes do not need `DATABASE_URL`, provider credentials, or the LiteLLM master key.
 
@@ -23,7 +24,7 @@ hermes gateway restart
 hermes kanban init
 ```
 
-The script is idempotent for profile configuration: it reads `config/worker-lanes.yaml`, creates missing durable lanes, refreshes descriptions/model config, replaces the narrow `forge-assurance` MCP entry, and installs the two Forge worker-contract skills into each profile.
+The script is idempotent for profile configuration: it reads `config/worker-lanes.yaml`, creates missing durable lanes, refreshes descriptions/model config, replaces the narrow `forge-assurance` MCP entry, and refreshes all Forge Skills into each durable profile.
 
 It intentionally disables Hermes' own direct model fallback chain. Provider/account failover is a Forge placement concern; allowing Hermes to fall back directly to another configured provider could bypass Forge privacy, cost and quota policy.
 
@@ -45,13 +46,37 @@ A retryable 429/502/503/504 from LiteLLM is recorded against the selected deploy
 
 ```text
 Hermes model tool call
-  -> mcp_forge_assurance_{latest/checkpoint/anchor/trust/decision}
-  -> local stdio MCP process
-  -> loopback Forge assurance/governance API
-  -> PostgreSQL / deterministic policy
+  -> forge-assurance MCP
+     -> Task Capsule / Reality Anchor / Trust Envelope / Decision classification
+     -> read-only knowledge_search / knowledge_read_page / knowledge_lint
+  -> loopback Forge assurance/governance API or local compiled-wiki reader
 ```
 
-The MCP process receives only `FORGE_INTERNAL_URL`, which is non-secret. It has no task-lifecycle mutation tool and no provider-selection or credential tool. Full network/process privilege separation is completed by the Sandbox Broker/capability gateway in M4; do not treat this M3 local-host integration as the final hostile-worker boundary.
+The MCP process receives only `FORGE_INTERNAL_URL` and `FORGE_KNOWLEDGE_ROOT`, which are non-secret local references. It has no task-lifecycle mutation tool, provider-selection tool, acquisition tool, compile tool, candidate-promotion tool, or credential tool. Full network/process privilege separation is completed by the Sandbox Broker/capability gateway in M4.
+
+## Knowledge maintenance cron
+
+Hermes cron is used only as a scheduler. It does **not** become another project/workflow graph.
+
+The optional setup is:
+
+```bash
+FORGE_ENABLE_KNOWLEDGE_CRON=true ./integrations/hermes/bootstrap.sh
+```
+
+or independently:
+
+```bash
+./integrations/hermes/configure-knowledge-cron.sh
+```
+
+Default jobs:
+
+- `Forge knowledge lint` — daily script-only job. Uses no LLM tokens; actionable findings are queued onto Hermes Kanban with an idempotency key and the `forge-knowledge-compiler` Skill.
+- `Forge knowledge digest` — daily script-only health/count digest. Uses no LLM tokens.
+- `Forge weekly technology radar` — weekly agent scan using `config/technology-radar-sources.yaml`, `forge-tech-radar`, and `forge-knowledge-compiler`. It may create `TEST`-tier research/triage tasks but may not install, adopt, compile, change policy, or promote technology.
+
+`FORGE_KNOWLEDGE_DELIVER` defaults to `local`; set it to a configured Hermes delivery target such as Telegram when desired. The cron platform should expose only the web/research and Kanban toolsets required by the weekly radar. Cron-run sessions cannot create additional cron jobs, matching Forge's runaway-scheduling constraint.
 
 ## `WAITING_COMPUTE`
 
@@ -59,4 +84,4 @@ Forge already returns structured `WAITING_COMPUTE` when no policy-compatible inf
 
 ## Upstream compatibility target
 
-The integration was designed against Hermes Agent commit `45af7a71fcd420b4422d2c074b1ce58b9ce0d048` (August 2026) and MCP Python SDK v2. Before upgrading Hermes or MCP, rerun the compatibility review for profile commands, Kanban tools/statuses, MCP configuration and model/custom-provider behavior.
+The integration was designed against the reviewed August 2026 Hermes Agent generation and MCP Python SDK v2. Before upgrading Hermes or MCP, rerun the compatibility review for profile commands, Kanban tools/statuses, cron behavior, MCP configuration and model/custom-provider behavior.
