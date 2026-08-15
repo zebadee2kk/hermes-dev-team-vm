@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from forge_controller.evidence_cli import EvidenceError, anchor_from_report, load_report, submit_anchor
+from forge_controller.evidence_cli import (
+    EvidenceError,
+    anchor_from_report,
+    load_report,
+    submit_anchor,
+)
 
 
 def _write_report(path: Path, payload: dict[str, object]) -> tuple[Path, dict[str, object], str]:
