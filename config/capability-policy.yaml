@@ -1,4 +1,4 @@
-# Seed policy. A capability grants a narrow operation; a destination alone grants nothing.
+# A capability grants one bounded authority. A destination or successful authentication grants nothing by itself.
 defaults:
   deny_unmatched: true
   credential_injection: gateway_preferred
@@ -14,26 +14,45 @@ network_hard_denies:
   - ::1/128
   - fe80::/10
 
+# Trust classification is intentionally separate from authority evaluation.
+content_trust_bindings:
+  public_web_research: untrusted_external
+
 capability_templates:
   github_repo_read:
     service: github
     operations: [repo.read, issue.read, pr.read]
     resource_scope_required: true
+    credential_exposure: never
   github_task_branch_write:
     service: github
-    operations: [branch.push, pr.create, issue.comment]
+    operations: [branch.push, pr.create]
     resource_scope_required: true
     branch_scope_required: true
     credential_binding: trusted_gateway
+    max_ttl_minutes: 30
+    deny_default_branch_write: true
+    allow_force_push: false
+    pr_base_must_equal_default: true
+    credential_exposure: never
+  github_issue_comment:
+    service: github
+    operations: [issue.comment]
+    resource_scope_required: true
+    credential_binding: trusted_gateway
+    max_ttl_minutes: 15
+    credential_exposure: never
   package_registry_read:
     service: package_registry
     operations: [metadata.read, artifact.download]
     credential_binding: none_or_gateway
+    credential_exposure: never
   provider_inference:
     service: inference
     operations: [model.invoke]
     credential_binding: litellm
+    credential_exposure: never
   public_web_research:
     service: web
     operations: [http.get]
-    content_trust: untrusted_external
+    credential_exposure: never
