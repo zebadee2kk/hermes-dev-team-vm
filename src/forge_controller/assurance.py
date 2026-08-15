@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from .models import AuthorityLevel, Capability, DecisionAction
+from .models import AuthorityLevel, Capability, DecisionAction, DecisionClassification
 
 
 class SemanticKind(StrEnum):
@@ -58,6 +58,7 @@ class DecisionRecord(BaseModel):
     question: str
     recommendation: str
     authority: AuthorityLevel
+    classification: DecisionClassification | None = None
     status: DecisionStatus = DecisionStatus.OPEN
     owner_action: DecisionAction | None = None
     evidence_refs: list[str] = Field(default_factory=list)
