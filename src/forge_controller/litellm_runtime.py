@@ -31,11 +31,11 @@ async def render_database_config(
 def credential_env_from_json(value: str) -> dict[str, str]:
     payload = json.loads(value)
     if not isinstance(payload, dict):
-        raise ValueError("credential mapping must be a JSON object")
+        raise TypeError("credential mapping must be a JSON object")
     mapping: dict[str, str] = {}
     for binding, env_name in payload.items():
         if not isinstance(binding, str) or not isinstance(env_name, str):
-            raise ValueError("credential mapping keys and values must be strings")
+            raise TypeError("credential mapping keys and values must be strings")
         if not env_name or not env_name.replace("_", "").isalnum():
             raise ValueError(f"invalid environment-variable name: {env_name!r}")
         mapping[binding] = env_name
