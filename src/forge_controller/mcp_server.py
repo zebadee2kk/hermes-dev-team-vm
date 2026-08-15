@@ -5,11 +5,11 @@ from collections.abc import Mapping
 from urllib.parse import quote
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 
 from .contracts import RealityAnchor, TaskCapsule
 
-mcp = FastMCP(
+mcp = MCPServer(
     "Forge Assurance",
     instructions=(
         "Narrow trusted facade for Hermes workers. Task lifecycle remains in Hermes Kanban; "
