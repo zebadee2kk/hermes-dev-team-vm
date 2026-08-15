@@ -9,6 +9,7 @@ from mcp.server import MCPServer
 
 from .contracts import RealityAnchor, TaskCapsule, TrustEnvelope
 from .knowledge import KnowledgeError, KnowledgeStore
+from .knowledge_assurance import CompiledKnowledgeAssurance
 from .models import DecisionRequest
 
 mcp = MCPServer(
@@ -158,8 +159,9 @@ async def knowledge_read_page(slug: str) -> str:
 
 @mcp.tool()
 async def knowledge_lint() -> dict[str, object]:
-    """Report orphan, broken-link and unknown-source problems without modifying knowledge."""
-    return _knowledge_store().lint().model_dump(mode="json")
+    """Report structural, contradiction and staleness findings without modifying knowledge."""
+    assurance = CompiledKnowledgeAssurance(_knowledge_store())
+    return assurance.lint().model_dump(mode="json")
 
 
 def main() -> None:
