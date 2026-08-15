@@ -5,7 +5,7 @@ import platform
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import ClassVar, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -57,7 +57,9 @@ class SandboxHostPreflightReport(BaseModel):
 class SandboxHostPreflight:
     """Non-mutating validation for a host that will run the trusted Sandbox Broker."""
 
-    SUPPORTED_ARCHITECTURES = {"x86_64", "amd64", "aarch64", "arm64"}
+    SUPPORTED_ARCHITECTURES: ClassVar[frozenset[str]] = frozenset(
+        {"x86_64", "amd64", "aarch64", "arm64"}
+    )
 
     def __init__(self, runner: HostCommandRunner | None = None) -> None:
         self.runner = runner or SubprocessHostCommandRunner()
