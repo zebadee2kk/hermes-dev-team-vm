@@ -15,14 +15,17 @@ class ProviderState(StrEnum):
     OFFLINE = "OFFLINE"
     AUTH_FAILED = "AUTH_FAILED"
     POLICY_BLOCKED = "POLICY_BLOCKED"
+    QUARANTINED = "QUARANTINED"
 
 
 class CostClass(StrEnum):
     FREE_API = "free_api"
+    FREE_CREDIT = "free_credit"
     LOCAL = "local"
     PAID = "paid"
     TRIAL = "trial"
     PROMOTIONAL = "promotional"
+    UNKNOWN = "unknown"
 
 
 class Sensitivity(StrEnum):
@@ -59,6 +62,7 @@ class Capability(StrEnum):
 class QuotaObservation(BaseModel):
     provider: str
     model: str | None = None
+    deployment_id: str | None = None
     status_code: int | None = None
     headers: dict[str, str] = Field(default_factory=dict)
     error_code: str | None = None
