@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LANE_MANIFEST="${FORGE_LANE_MANIFEST:-$ROOT_DIR/config/worker-lanes.yaml}"
 FORGE_INTERNAL_URL="${FORGE_INTERNAL_URL:-http://127.0.0.1:8080}"
+FORGE_KNOWLEDGE_ROOT="${FORGE_KNOWLEDGE_ROOT:-$ROOT_DIR/knowledge}"
 
 if ! command -v hermes >/dev/null 2>&1; then
   echo "hermes CLI is required" >&2
@@ -15,6 +16,10 @@ python -c 'import forge_controller, mcp, yaml' >/dev/null 2>&1 || {
 }
 if [[ ! -f "$LANE_MANIFEST" ]]; then
   echo "Forge lane manifest not found: $LANE_MANIFEST" >&2
+  exit 1
+fi
+if [[ ! -d "$FORGE_KNOWLEDGE_ROOT/wiki" ]]; then
+  echo "Forge knowledge root is invalid: $FORGE_KNOWLEDGE_ROOT" >&2
   exit 1
 fi
 
@@ -64,20 +69,25 @@ while IFS=$'\t' read -r lane model description; do
     hermes -p "$lane" config set fallback_model '' >/dev/null
   fi
 
-  # The MCP process receives only a non-secret loopback Forge URL. It does not receive
-  # DATABASE_URL, provider keys, or LiteLLM credentials.
+  # The MCP process receives only non-secret local paths/URLs. It does not receive
+  # DATABASE_URL, provider keys, the LiteLLM master key, or Sandbox Broker credentials.
   hermes -p "$lane" mcp remove forge-assurance >/dev/null 2>&1 || true
   hermes -p "$lane" mcp add forge-assurance \
     --command env \
-    --args "FORGE_INTERNAL_URL=$FORGE_INTERNAL_URL" python -m forge_controller.mcp_server >/dev/null
+    --args "FORGE_INTERNAL_URL=$FORGE_INTERNAL_URL" \
+      "FORGE_KNOWLEDGE_ROOT=$FORGE_KNOWLEDGE_ROOT" \
+      python -m forge_controller.mcp_server >/dev/null
 
   config_path="$(hermes -p "$lane" config path)"
   profile_dir="$(dirname "$config_path")"
-  mkdir -p "$profile_dir/skills/forge-task-contract" "$profile_dir/skills/forge-reality-anchor"
-  cp "$ROOT_DIR/integrations/hermes/skills/forge-task-contract/SKILL.md" \
-    "$profile_dir/skills/forge-task-contract/SKILL.md"
-  cp "$ROOT_DIR/integrations/hermes/skills/forge-reality-anchor/SKILL.md" \
-    "$profile_dir/skills/forge-reality-anchor/SKILL.md"
+  skills_dir="$profile_dir/skills"
+  mkdir -p "$skills_dir"
+  for skill_path in "$ROOT_DIR"/integrations/hermes/skills/*; do
+    [[ -d "$skill_path" ]] || continue
+    skill_name="$(basename "$skill_path")"
+    mkdir -p "$skills_dir/$skill_name"
+    cp "$skill_path/SKILL.md" "$skills_dir/$skill_name/SKILL.md"
+  done
 done < <(
   python - "$LANE_MANIFEST" <<'PY'
 import sys
@@ -102,4 +112,5 @@ hermes config set kanban.orchestrator_profile "$KANBAN_ORCHESTRATOR" >/dev/null
 hermes config set kanban.default_assignee "$KANBAN_DEFAULT_ASSIGNEE" >/dev/null
 
 echo "Hermes Forge lanes configured from $LANE_MANIFEST. Export FORGE_GATEWAY_KEY in the Hermes gateway service environment before starting the gateway."
+echo "Compiled knowledge exposed read-only from $FORGE_KNOWLEDGE_ROOT through forge-assurance MCP."
 echo "Next: hermes gateway restart && hermes kanban init"
