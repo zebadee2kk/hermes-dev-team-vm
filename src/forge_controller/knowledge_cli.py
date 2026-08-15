@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
 
+from .candidate_promotion import promote_candidate_with_assurance
 from .knowledge import (
     CandidateEvaluation,
     CandidateSignalInput,
@@ -18,6 +21,8 @@ from .knowledge import (
     evaluate_promotion,
 )
 from .knowledge_assurance import CompiledKnowledgeAssurance, StructuredWikiPage
+from .persistence import make_engine, make_session_factory
+from .repository import AssuranceRepository
 
 
 def _add_promotion_arguments(parser: argparse.ArgumentParser) -> None:
@@ -52,14 +57,21 @@ def build_parser() -> argparse.ArgumentParser:
         signal.add_argument(f"--{name.replace('_', '-')}", action="store_true")
 
     promotion = commands.add_parser(
-        "promotion-check", help="check candidate promotion eligibility"
+        "promotion-check", help="check structural candidate promotion eligibility"
     )
     _add_promotion_arguments(promotion)
 
     promote = commands.add_parser(
-        "promote", help="promote an eligible candidate through the controlled state transition"
+        "promote",
+        help="promote only after Forge verifies current Reality Anchors in the assurance database",
     )
     _add_promotion_arguments(promote)
+    promote.add_argument("--project-id", required=True)
+    promote.add_argument(
+        "--database-url",
+        default=os.getenv("DATABASE_URL"),
+        help="Forge async SQLAlchemy database URL; defaults to DATABASE_URL",
+    )
 
     search = commands.add_parser("search", help="search compiled wiki pages")
     search.add_argument("query")
@@ -96,6 +108,30 @@ def _load_promotion_inputs(
         min_anchor_count=args.min_anchor_count,
     )
     return candidate, evaluations, policy
+
+
+async def _promote_with_database(
+    *,
+    store: KnowledgeStore,
+    database_url: str,
+    project_id: str,
+    candidate: TechnologyCandidate,
+    evaluations: list[CandidateEvaluation],
+    policy: PromotionPolicy,
+) -> TechnologyCandidate:
+    engine = make_engine(database_url)
+    try:
+        repository = AssuranceRepository(make_session_factory(engine))
+        return await promote_candidate_with_assurance(
+            store,
+            repository,
+            candidate,
+            evaluations,
+            project_id=project_id,
+            policy=policy,
+        )
+    finally:
+        await engine.dispose()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -151,8 +187,25 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "promote":
         candidate, evaluations, policy = _load_promotion_inputs(args)
+        if not args.database_url:
+            _print_json(
+                {
+                    "promoted": False,
+                    "reason": "candidate promotion requires --database-url or DATABASE_URL so Reality Anchors can be verified",
+                }
+            )
+            return 2
         try:
-            promoted = store.promote_candidate(candidate, evaluations, policy=policy)
+            promoted = asyncio.run(
+                _promote_with_database(
+                    store=store,
+                    database_url=args.database_url,
+                    project_id=args.project_id,
+                    candidate=candidate,
+                    evaluations=evaluations,
+                    policy=policy,
+                )
+            )
         except KnowledgeError as exc:
             _print_json({"promoted": False, "reason": str(exc)})
             return 2
