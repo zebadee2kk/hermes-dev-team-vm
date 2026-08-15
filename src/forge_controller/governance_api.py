@@ -6,7 +6,7 @@ from hmac import compare_digest
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from .assurance import DecisionRecord
+from .assurance import DecisionRecord, DecisionStatus
 from .contracts import TrustEnvelope
 from .decision import classify_decision
 from .governance import (
@@ -136,7 +136,7 @@ async def decision_create(
 ) -> DecisionCreateResponse:
     _authorize_control(request)
     classification = classify_decision(payload.decision)
-    record = DecisionRecord(
+    proposed = DecisionRecord(
         decision_id=payload.decision.id,
         project_id=payload.project_id,
         task_id=payload.task_id,
@@ -148,10 +148,16 @@ async def decision_create(
         blocked_refs=list(dict.fromkeys(payload.blocked_refs)),
     )
     repository = _repository(request)
-    existing = await repository.get_decision(record.decision_id)
-    if existing is not None and existing != record:
-        raise HTTPException(status_code=409, detail="decision id already exists with different content")
-    await repository.save_decision(record)
+    existing = await repository.get_decision(proposed.decision_id)
+    if existing is not None:
+        if existing.status is not DecisionStatus.OPEN:
+            raise HTTPException(status_code=409, detail="decision id already resolved or superseded")
+        if not _same_decision_intent(existing, proposed):
+            raise HTTPException(status_code=409, detail="decision id already exists with different content")
+        record = existing
+    else:
+        record = proposed
+        await repository.save_decision(record)
     await repository.append_event(
         "decision.opened",
         project_id=record.project_id,
@@ -218,3 +224,18 @@ async def decision_owner_action(
         },
     )
     return transition
+
+
+def _same_decision_intent(first: DecisionRecord, second: DecisionRecord) -> bool:
+    fields = (
+        "decision_id",
+        "project_id",
+        "task_id",
+        "question",
+        "recommendation",
+        "authority",
+        "classification",
+        "evidence_refs",
+        "blocked_refs",
+    )
+    return all(getattr(first, field) == getattr(second, field) for field in fields)
