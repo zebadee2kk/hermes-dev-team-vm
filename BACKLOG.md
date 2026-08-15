@@ -50,10 +50,11 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 
 - [x] reference Hermes integration/config foundation — compatibility target pinned to the reviewed upstream Hermes release; manifest-driven bootstrap implemented and exercised against a fake Hermes CLI
 - [x] stable lane/profile definitions generated from authoritative `config/worker-lanes.yaml`
-- [x] task-scoped Skills convention/library foundation — Task Capsule and Reality Anchor process Skills installed per durable lane
+- [x] task-scoped Skills convention/library foundation — Task Capsule, Reality Anchor, compiled-knowledge and technology-radar process Skills installed per durable lane
 - [x] Task Capsule adapter foundation for Kanban start/resume/handoff/review/completion through Skills + narrow Forge MCP checkpoints
 - [x] stable Forge Model Gateway — Hermes lanes retain `forge/<capability>` identities while Forge performs policy/quota placement to exact LiteLLM deployment aliases
 - [x] Forge MCP/API facade for capsule, evidence, trust/provenance and decision classification; provider selection remains implicit through the Model Gateway
+- [x] compiled wiki read-only MCP surface — search/read/lint only; raw mutation and technology promotion remain trusted-control operations
 - [x] structured result/anchor ingestion foundation — worker-result schema, Reality Anchor MCP path and bounded external-runtime result contract
 - [ ] live Hermes-native staging smoke: raw idea -> Kanban decomposition -> lane dispatch -> capsule checkpoint -> implementation -> Reality Anchor -> review/complete
 - [ ] human/compute block-unblock mapping — Forge returns structured `WAITING_COMPUTE`, but the reviewed custom-provider request path exposes no supported dynamic Kanban task id; do not mutate Hermes SQLite behind its back
@@ -62,19 +63,20 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 
 **Exit:** raw idea -> Hermes decomposition -> durable work -> Task Capsules -> autonomous implementation/verification without a Forge-owned parallel DAG.
 
-**Current status:** M3 integration foundation is implemented without introducing a second execution queue. All durable profile/model configuration comes from one lane manifest, direct Hermes provider fallback is disabled, and external runtime adapters remain disabled by policy. M3 exit is not yet satisfied: it requires a live Hermes staging vertical test and a supported task-context bridge for automatic compute blocking/unblocking.
+**Current status:** M3 integration foundation is implemented without introducing a second execution queue. All durable profile/model configuration comes from one lane manifest, direct Hermes provider fallback is disabled, compiled knowledge is available through a narrow local MCP facade, and external runtime adapters remain disabled by policy. M3 exit is not yet satisfied: it requires a live Hermes staging vertical test and a supported task-context bridge for automatic compute blocking/unblocking.
 
 ## M4 — Sandbox Broker + capability gateway
 
-- [ ] sandbox manager abstraction
-- [ ] gVisor normal worker prototype on x86_64 and ARM64 target paths
+- [x] sandbox manager/planner abstraction foundation with fail-closed normal profile
+- [ ] live gVisor normal worker validation on x86_64 and ARM64 target paths — `runsc` runtime planner/wrapper exists; host execution proof remains
 - [ ] high-risk stronger isolation adapter design
-- [ ] per-task/worktree workspace lifecycle and resource limits
-- [ ] prove Docker socket is unavailable
-- [ ] hard network denies + destination proxy
+- [x] per-task workspace/resource-limit policy foundation — one validated workspace mount, read-only root, non-root worker, CPU/RAM/PID/tmpfs limits
+- [ ] live proof Docker/containerd sockets and host/LAN metadata are unreachable from a running Hand
+- [x] hard no-network baseline for normal worker; destination capability proxy remains
 - [ ] capability gateway with GitHub task-branch scoped write path
 - [ ] secret broker / trusted credential injection
-- [ ] destroy/recreate/checkpoint tests
+- [x] trusted Sandbox Broker service/API + controller UDS client foundation; execution disabled by default and timeout force-cleanup defined
+- [ ] destroy/recreate/checkpoint live tests
 
 **Exit:** compromised Hand cannot access Brain secrets/host control/LAN metadata or use an approved service outside its granted operation/resource scope.
 
@@ -95,23 +97,38 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 - [x] typed semantic node/edge persistence foundation
 - [x] reality-anchor persistence foundation
 - [ ] claim/anchor freshness and stale-impact traversal
-- [ ] request re-validation work through Hermes when anchors become stale
+- [ ] compiled-wiki source/entity/claim/contradiction/supersession graph mirroring
+- [ ] request re-validation work through Hermes when anchors or compiled knowledge become stale
 - [ ] protected acceptance/security/Charter invariants
 - [ ] risk-adaptive independent review policy
 
-**Exit:** architecture/requirement change marks affected code/tests/docs/evidence stale and Hermes schedules only the necessary re-validation.
+**Exit:** architecture/requirement/knowledge change marks affected code/tests/docs/evidence stale and Hermes schedules only the necessary re-validation.
 
-## M7 — Evaluation, learning quarantine and gardening
+## M7 — Compiled knowledge, evaluation, learning quarantine and gardening
 
+- [x] Karpathy-style compiled knowledge foundation — immutable content-addressed `raw/`, derivative Markdown `wiki/`, generated index and append-only log
+- [x] machine-enforced claim provenance — asserted/inferred origin, `raw:` grounding only and no wiki-to-wiki self-grounding
+- [x] deterministic local wiki search + orphan/broken-link/unknown-source lint foundation
+- [x] evidence-weighted high-signal technology intake filter (`ignore | watch | test`) that ignores social engagement metrics
+- [x] technology candidate lifecycle/contracts — observed -> triaged -> sandbox_tested -> probation -> promoted/rejected
+- [x] anchored candidate promotion gate — probation, passing real-workload evaluations, Reality Anchors, no unresolved failure and rollback required
+- [x] Hermes task-scoped knowledge compiler + technology radar Skills
+- [x] Hermes read-only compiled-wiki MCP access; raw ingest/promotion not exposed to ordinary workers
+- [ ] trusted automated ingest path from approved web/repo/tool acquisition -> Trust Envelope -> immutable raw source -> compiled-page proposal
+- [ ] contradiction/supersession/staleness automation linked to semantic graph impact traversal
+- [ ] recurring high-signal intake, knowledge lint and weekly candidate digest through Hermes Kanban
 - [ ] canonical micro-evals for initial priors
 - [ ] real-task anchored outcome scoring
 - [x] persistent deployment capability-score foundation with uncertainty metadata
 - [ ] regression detection/quarantine
 - [x] quarantined learning-candidate persistence foundation
 - [ ] offline/cross-project promotion workflow
+- [ ] run at least one real bleeding-edge technology through the full 14+ day default probation path and record deletion/rollback outcome
 - [ ] recurring documentation/dependency/architecture/security/test gardening tasks
 
-**Exit:** routing/Skills improve from measured outcomes without allowing learned state to weaken Charter/policy/security.
+**Exit:** project knowledge compounds as a grounded inspectable artifact, while routing/Skills/technology choices improve from measured outcomes without allowing learned or externally sourced state to weaken Charter/policy/security.
+
+**Current status:** the compiled knowledge and technology-radar foundation is implemented. It deliberately does not yet automate web/X ingestion or promote any new framework. The next knowledge-plane work is trusted acquisition + Trust Envelope automation, semantic stale/contradiction propagation, and a real candidate probation trial.
 
 ## M8 — Deployment automation
 
@@ -133,7 +150,7 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 - [ ] LAN/metadata/egress bypass tests
 - [ ] test/acceptance-weakening detection
 - [ ] runaway/repeated-denial/quota-storm/budget-escape tests
-- [ ] memory/learning poisoning tests
+- [ ] memory/learning/compiled-knowledge poisoning tests
 - [ ] corrupt/replayed capsule/graph recovery
 - [ ] L3 capability bypass tests
 
