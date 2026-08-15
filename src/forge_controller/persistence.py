@@ -4,7 +4,12 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text, UniqueConstraint
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 

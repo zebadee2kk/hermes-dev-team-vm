@@ -7,7 +7,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .contracts import InferenceDeployment, RealityAnchor, TaskCapsule, TrustEnvelope
-from .models import Availability, Capability, ModelCandidate, QuotaObservation, RouteRequest, Sensitivity
+from .models import (
+    Availability,
+    Capability,
+    ModelCandidate,
+    QuotaObservation,
+    RouteRequest,
+    Sensitivity,
+)
 from .persistence import (
     EventRow,
     InferenceDeploymentRow,
@@ -37,7 +44,9 @@ class AssuranceRepository:
                     capsule_id=capsule.capsule_id,
                     project_id=capsule.project_id,
                     task_id=capsule.task_id,
-                    kanban_task_id=(str(capsule.kanban_task_id) if capsule.kanban_task_id is not None else None),
+                    kanban_task_id=(
+                        str(capsule.kanban_task_id) if capsule.kanban_task_id is not None else None
+                    ),
                     revision=capsule.revision,
                     payload=capsule.model_dump(mode="json"),
                 )
@@ -144,7 +153,9 @@ class AssuranceRepository:
                     payload={
                         "deployment_id": deployment_id,
                         "state": availability.state.value,
-                        "retry_at": availability.retry_at.isoformat() if availability.retry_at else None,
+                        "retry_at": (
+                            availability.retry_at.isoformat() if availability.retry_at else None
+                        ),
                         "confidence": availability.confidence,
                     },
                 )
@@ -211,7 +222,9 @@ class AssuranceRepository:
             "retry_at": deployment.retry_at,
             "cost_class": deployment.cost_class.value,
             "accepted_sensitivity": [item.value for item in deployment.accepted_sensitivity],
-            "capability_scores": {key.value: value for key, value in deployment.capability_scores.items()},
+            "capability_scores": {
+                key.value: value for key, value in deployment.capability_scores.items()
+            },
             "reliability": deployment.reliability,
             "latency_score": deployment.latency_score,
             "development_only": deployment.development_only,

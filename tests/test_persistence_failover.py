@@ -3,7 +3,13 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from forge_controller.contracts import InferenceDeployment, TaskCapsule, VerificationPlan
-from forge_controller.models import Capability, CostClass, QuotaObservation, RouteRequest, Sensitivity
+from forge_controller.models import (
+    Capability,
+    CostClass,
+    QuotaObservation,
+    RouteRequest,
+    Sensitivity,
+)
 from forge_controller.persistence import create_schema, make_engine, make_session_factory
 from forge_controller.placement import WaitingForCompute, observe, place
 from forge_controller.repository import AssuranceRepository
@@ -99,7 +105,7 @@ async def test_capsule_and_compute_failover_survive_restart(tmp_path) -> None:
     assert restored_capsule is not None
     assert restored_capsule.objective == capsule.objective
 
-    # After the earlier deployment reset, placement re-evaluates the pool instead of pinning to old state.
+    # Re-evaluate the full pool after reset instead of pinning work to the previous deployment.
     later = now + timedelta(hours=1, minutes=1)
     assert (await place(restarted, request, now=later)).id == second.deployment_id
 
