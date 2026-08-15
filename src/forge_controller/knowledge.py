@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
-from typing import Iterable
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
