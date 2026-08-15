@@ -19,6 +19,10 @@ class SemanticKind(StrEnum):
     TEST = "test"
     RISK = "risk"
     DOCUMENT = "document"
+    SOURCE = "source"
+    WIKI_PAGE = "wiki_page"
+    KNOWLEDGE_PROPOSAL = "knowledge_proposal"
+    TECHNOLOGY_CANDIDATE = "technology_candidate"
     CLAIM = "claim"
 
 
