@@ -18,7 +18,6 @@ from .knowledge_assurance import (
 from .persistence import RealityAnchorRow, SemanticEdgeRow, SemanticNodeRow
 from .repository import AssuranceRepository
 
-
 STALE_PROPAGATION_RELATIONSHIPS = {
     "based_on",
     "contains",
