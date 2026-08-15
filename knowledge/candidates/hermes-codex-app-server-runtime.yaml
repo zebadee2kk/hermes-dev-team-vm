@@ -1,0 +1,62 @@
+candidate_id: hermes-codex-app-server-runtime
+name: Hermes Codex app-server leaf-worker runtime
+kind: primitive
+status: probation
+problem: >-
+  Forge needs additional coding execution capacity that can use an owner's existing subscription-backed
+  tooling without replacing Hermes Kanban, creating a second orchestrator, or consuming scarce free API quota.
+proposed_value: >-
+  Use Hermes' optional Codex app-server runtime for bounded engineering leaf-worker turns so Codex can
+  execute shell, patch and MCP-backed work while Hermes retains sessions, Kanban lifecycle and governance.
+evidence_refs:
+  - github:NousResearch/hermes-agent/website/docs/user-guide/features/codex-app-server-runtime.md
+  - github:openai/codex/codex-rs/app-server/README.md
+  - github:NousResearch/hermes-agent/issues/61360
+signal_assessment:
+  score: 75
+  tier: test
+  reasons:
+    - +20 primary source
+    - +20 concrete artifact
+    - +15 reproducible
+    - +10 independent corroboration
+    - +10 postmortem/failure analysis
+replacement_scope:
+  - engineering leaf-worker turns only
+integration_seam: >-
+  Hermes-native model.openai_runtime=codex_app_server inside a bounded worker environment. This is not the
+  Forge external_runtime_adapters.codex path and must not become the orchestrator runtime during probation.
+test_plan:
+  - Record Hermes and Codex versions plus generated app-server schema before each evaluation window.
+  - Prove the runtime starts in a service/Kanban-worker environment with an explicit, deterministic Codex binary path.
+  - Run a bounded single-file bug-fix workload against the same Task Capsule acceptance criteria as the normal forge/coding baseline.
+  - Run a bounded multi-file refactor workload against the same Task Capsule acceptance criteria as the normal forge/coding baseline.
+  - Verify shell and apply-patch activity cannot write outside the assigned workspace or access Forge control-plane secrets.
+  - Verify Hermes Kanban heartbeat/comment/review/completion reporting survives the Codex runtime handoff.
+  - Verify timeout/cancel leaves the Task Capsule and workspace recoverable and does not auto-complete the Kanban task.
+  - Switch model.openai_runtime back to auto and prove the same worker lane resumes on the standard Hermes runtime.
+acceptance:
+  - Minimum 14-day probation period has elapsed.
+  - At least two passing real-workload evaluations exist for distinct tasks.
+  - Every passing real-workload evaluation resolves to a current, non-stale Forge Reality Anchor bound to the same task.
+  - No write or host-control capability escapes the assigned worker workspace in negative tests.
+  - No Forge database, LiteLLM master key, provider credential or host-control secret is exposed to the Codex runtime.
+  - Hermes Kanban remains the durable task lifecycle and no parallel project queue is introduced.
+  - Orchestrator, research and governance lanes remain on the standard Hermes runtime during probation.
+  - Service-context Codex binary discovery is deterministic and does not depend on an interactive-shell PATH.
+  - Rollback to model.openai_runtime=auto is demonstrated on a live worker without losing the Task Capsule.
+  - Candidate does not require paid API fallback to satisfy its probation workloads.
+risks:
+  - The runtime bypasses Hermes' normal tool loop for the affected turn, changing the execution failure domain.
+  - delegate_task, Hermes memory, session_search and Hermes todo are not available inside Codex app-server turns.
+  - Codex and Hermes authentication are separate sessions and must not be copied into prompts, logs or project files.
+  - Gateway/service/Kanban contexts may have a minimal PATH; current Hermes upstream has an open binary-path configuration issue.
+  - Codex app-server protocol and some transports contain experimental surface area; use stdio/local supported paths only during probation.
+  - Nested sandbox assumptions could be weaker than Forge's intended M4 disposable-Hand boundary; live workloads must wait for an acceptable outer worker boundary.
+first_seen_at: '2026-08-15T20:36:00Z'
+probation_started_at: '2026-08-15T20:36:00Z'
+promoted_at: null
+rollback: >-
+  Set Hermes model.openai_runtime back to auto for the trial worker profile, terminate any Codex app-server
+  subprocess, preserve the workspace and latest Task Capsule, then re-dispatch the task through the normal
+  forge/coding lane. Remove any probation-only Codex configuration after the rollback evidence is recorded.
