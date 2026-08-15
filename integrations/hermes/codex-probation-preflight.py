@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import shutil
 import subprocess
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 MIN_CODEX_VERSION = (0, 130, 0)
@@ -27,9 +29,21 @@ def _version_tuple(text: str) -> tuple[int, int, int] | None:
     return tuple(int(part) for part in match.groups())  # type: ignore[return-value]
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="codex-probation-preflight")
+    parser.add_argument("--project-id", default="forge")
+    parser.add_argument("--task-id", default="probation-001-codex-preflight")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     report: dict[str, object] = {
+        "kind": "forge-codex-probation-preflight",
         "candidate_id": "hermes-codex-app-server-runtime",
+        "observed_at": datetime.now(UTC).isoformat(),
+        "project_id": args.project_id,
+        "task_id": args.task_id,
         "mutated_configuration": False,
         "working_directory": str(Path.cwd().resolve()),
         "checks": {},

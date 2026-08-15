@@ -25,6 +25,7 @@ forge-knowledge = "forge_controller.knowledge_cli:main"
 forge-sandbox-smoke = "forge_controller.sandbox_smoke:main"
 forge-codex-bridge = "forge_controller.codex_bridge:main"
 forge-codex-shim = "forge_controller.codex_bridge_client:main"
+forge-evidence = "forge_controller.evidence_cli:main"
 
 [project.optional-dependencies]
 dev = [

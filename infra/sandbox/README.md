@@ -1,12 +1,12 @@
 # Sandbox Broker deployment
 
-This directory turns the M4 gVisor design into a deployable, evidence-producing normal Hand boundary.
+This directory turns the M4 gVisor design into a deployable, evidence-producing Hand boundary.
 
 ## Trust boundary
 
 The Sandbox Broker is trusted host-control infrastructure. It may talk to Docker; Hands may not. Membership in the host `docker` group is effectively host-control authority, so only the dedicated `forge-sandbox` service account receives it. The broker listens on a local Unix-domain socket and requires its own bearer credential. Ordinary workers receive neither the Docker socket nor the broker credential.
 
-The normal Hand stays `network=none`. Do not enable ordinary Docker bridge networking to make a model CLI work. Subscription-backed Codex probation requires the later capability-egress slice so the Hand can reach only a trusted, operation-scoped gateway rather than the Internet directly.
+The normal Hand stays `network=none`. Do not enable ordinary Docker bridge networking to make a model CLI work. The Codex probation exception uses a separate internal-only network plus a service-scoped CONNECT proxy; see `docs/23-codex-capability-egress.md`.
 
 ## 1. Install gVisor on Ubuntu/Debian
 
@@ -76,6 +76,32 @@ sudo systemctl enable --now forge-sandbox-broker
 
 Do not expose `/run/forge/sandbox-broker.sock` to Hands.
 
-## Codex probation dependency
+## Codex probation capability
 
-Do not run Probation 001 inside this no-network Hand yet. Codex CLI/app-server needs authenticated outbound access. The next M4 slice must provide an internal-only Hand network plus a trusted capability gateway (and a dedicated Codex credential strategy) so direct worker Internet remains impossible.
+The Codex-specific capability-egress slice now exists and must remain separate from the normal no-network Hand. Follow `docs/23-codex-capability-egress.md` to deploy the internal-only network, CONNECT proxy, dedicated auth volume, UDS bridge and Hermes service-scoped shim.
+
+Before device authentication, collect the machine-verifiable boundary/preflight evidence in one run:
+
+```bash
+export FORGE_NORMAL_HAND_IMAGE='sha256:<normal-hand-image-id>'
+infra/sandbox/probation-001-preflight-evidence.sh
+```
+
+The helper:
+
+1. runs the normal gVisor compromise smoke against the exact probation workspace;
+2. normalizes the smoke report into a hash-bound Reality Anchor;
+3. runs the Codex app-server preflight through the Hermes shim/bridge;
+4. normalizes that report into a second Reality Anchor;
+5. optionally submits both anchors to a local Forge controller when `FORGE_CONTROLLER_URL` is set;
+6. stops before ChatGPT device authentication.
+
+Device authentication remains an explicit human gate:
+
+```bash
+sudo infra/sandbox/codex-device-login.sh
+```
+
+Do not enable `model.openai_runtime=codex_app_server` until the remaining proxy/secret/socket negative tests in `docs/23-codex-capability-egress.md` also have current Reality Anchors.
+
+See `docs/24-reality-anchor-evidence.md` for the evidence-normalisation and ingestion rules.
