@@ -7,13 +7,14 @@ from urllib.parse import quote
 import httpx
 from mcp.server import MCPServer
 
-from .contracts import RealityAnchor, TaskCapsule
+from .contracts import RealityAnchor, TaskCapsule, TrustEnvelope
+from .models import DecisionRequest
 
 mcp = MCPServer(
     "Forge Assurance",
     instructions=(
         "Narrow trusted facade for Hermes workers. Task lifecycle remains in Hermes Kanban; "
-        "these tools only checkpoint Task Capsules and record executable Reality Anchors."
+        "these tools checkpoint Task Capsules, record evidence/provenance, and classify decisions."
     ),
 )
 
@@ -51,6 +52,22 @@ class ForgeAssuranceClient:
             "POST",
             "/v1/anchors",
             json=anchor.model_dump(mode="json"),
+        )
+        return _mapping(response.json())
+
+    async def record_trust_envelope(self, envelope: TrustEnvelope) -> dict[str, object]:
+        response = await self._request(
+            "POST",
+            "/v1/trust-envelopes",
+            json=envelope.model_dump(mode="json"),
+        )
+        return _mapping(response.json())
+
+    async def classify_decision(self, decision: DecisionRequest) -> dict[str, object]:
+        response = await self._request(
+            "POST",
+            "/v1/decisions/classify",
+            json=decision.model_dump(mode="json"),
         )
         return _mapping(response.json())
 
@@ -101,6 +118,18 @@ async def latest_capsule(task_id: str) -> dict[str, object] | None:
 async def record_reality_anchor(anchor: RealityAnchor) -> dict[str, object]:
     """Record independent executable evidence for a task claim."""
     return await _client().record_reality_anchor(anchor)
+
+
+@mcp.tool()
+async def record_trust_envelope(envelope: TrustEnvelope) -> dict[str, object]:
+    """Record provenance, sensitivity and taint metadata for acquired content."""
+    return await _client().record_trust_envelope(envelope)
+
+
+@mcp.tool()
+async def classify_decision(decision: DecisionRequest) -> dict[str, object]:
+    """Classify whether a proposed decision is autonomous or needs owner authority."""
+    return await _client().classify_decision(decision)
 
 
 def main() -> None:
