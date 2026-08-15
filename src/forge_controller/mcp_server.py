@@ -7,10 +7,11 @@ from urllib.parse import quote
 import httpx
 from mcp.server import MCPServer
 
-from .contracts import RealityAnchor, TaskCapsule, TrustEnvelope
+from .contracts import RealityAnchor, TaskCapsule
 from .knowledge import KnowledgeError, KnowledgeStore
 from .knowledge_assurance import CompiledKnowledgeAssurance
-from .models import DecisionRequest
+from .models import DecisionRequest, Sensitivity
+from .trust_gateway import SourceDescriptor
 
 mcp = MCPServer(
     "Forge Assurance",
@@ -27,9 +28,11 @@ class ForgeAssuranceClient:
         self,
         base_url: str,
         *,
+        control_key: str | None = None,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
+        self.control_key = control_key
         self.client = client
 
     async def checkpoint_capsule(self, capsule: TaskCapsule) -> dict[str, object]:
@@ -58,11 +61,30 @@ class ForgeAssuranceClient:
         )
         return _mapping(response.json())
 
-    async def record_trust_envelope(self, envelope: TrustEnvelope) -> dict[str, object]:
+    async def ingest_trust(
+        self,
+        *,
+        project_id: str,
+        content_ref: str,
+        content: str,
+        source: SourceDescriptor,
+        task_id: str | None = None,
+        sensitivity: Sensitivity = Sensitivity.PUBLIC,
+        parent_envelope_ids: list[str] | None = None,
+    ) -> dict[str, object]:
         response = await self._request(
             "POST",
-            "/v1/trust-envelopes",
-            json=envelope.model_dump(mode="json"),
+            "/v1/governance/trust/ingest",
+            json={
+                "project_id": project_id,
+                "task_id": task_id,
+                "content_ref": content_ref,
+                "content": content,
+                "source": source.model_dump(mode="json", exclude_none=True),
+                "sensitivity": sensitivity.value,
+                "parent_envelope_ids": parent_envelope_ids or [],
+            },
+            require_control=True,
         )
         return _mapping(response.json())
 
@@ -81,11 +103,22 @@ class ForgeAssuranceClient:
         *,
         json: dict[str, object] | None = None,
         allow_not_found: bool = False,
+        require_control: bool = False,
     ) -> httpx.Response:
         owns_client = self.client is None
         client = self.client or httpx.AsyncClient(timeout=30)
+        headers: dict[str, str] = {}
+        if require_control:
+            if not self.control_key:
+                raise RuntimeError("FORGE_CONTROL_KEY is required for governed trust ingestion")
+            headers["Authorization"] = f"Bearer {self.control_key}"
         try:
-            response = await client.request(method, f"{self.base_url}{path}", json=json)
+            response = await client.request(
+                method,
+                f"{self.base_url}{path}",
+                json=json,
+                headers=headers,
+            )
             if allow_not_found and response.status_code == 404:
                 return response
             response.raise_for_status()
@@ -96,7 +129,10 @@ class ForgeAssuranceClient:
 
 
 def _client() -> ForgeAssuranceClient:
-    return ForgeAssuranceClient(os.environ.get("FORGE_INTERNAL_URL", "http://127.0.0.1:8080"))
+    return ForgeAssuranceClient(
+        os.environ.get("FORGE_INTERNAL_URL", "http://127.0.0.1:8080"),
+        control_key=os.environ.get("FORGE_CONTROL_KEY"),
+    )
 
 
 def _knowledge_store() -> KnowledgeStore:
@@ -131,9 +167,25 @@ async def record_reality_anchor(anchor: RealityAnchor) -> dict[str, object]:
 
 
 @mcp.tool()
-async def record_trust_envelope(envelope: TrustEnvelope) -> dict[str, object]:
-    """Record provenance, sensitivity and taint metadata for acquired content."""
-    return await _client().record_trust_envelope(envelope)
+async def ingest_trust(
+    project_id: str,
+    content_ref: str,
+    content: str,
+    source: SourceDescriptor,
+    task_id: str | None = None,
+    sensitivity: Sensitivity = Sensitivity.PUBLIC,
+    parent_envelope_ids: list[str] | None = None,
+) -> dict[str, object]:
+    """Derive provenance, taint and trust for external/subagent content; callers cannot set trust."""
+    return await _client().ingest_trust(
+        project_id=project_id,
+        task_id=task_id,
+        content_ref=content_ref,
+        content=content,
+        source=source,
+        sensitivity=sensitivity,
+        parent_envelope_ids=parent_envelope_ids,
+    )
 
 
 @mcp.tool()
