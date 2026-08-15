@@ -33,11 +33,28 @@ def test_normal_profile_matches_executable_fail_closed_defaults() -> None:
     }
 
 
-def test_unimplemented_profiles_and_capability_gateway_fail_closed() -> None:
+def test_unimplemented_profiles_and_live_capability_gateway_fail_closed() -> None:
     config = yaml.safe_load((ROOT / "config/sandbox-profiles.yaml").read_text())
     assert config["profiles"]["low"]["enabled"] is False
     assert config["profiles"]["high"]["enabled"] is False
-    assert config["future_capability_gateway"]["enabled"] is False
+
+    codex = config["profiles"]["codex-probation"]
+    assert codex["enabled"] is True
+    assert codex["network"] == "forge-codex-internal"
+    assert codex["direct_internet"] is False
+    assert codex["required_capability_grant"] == "capability:codex-probation-openai-egress"
+    assert codex["allowed_upstream_hosts"] == ["chatgpt.com", "auth.openai.com"]
+    assert codex["forge_secret_refs"] == "forbidden"
+
+    gateway = config["capability_gateway"]
+    assert gateway["enabled_profiles"] == ["codex-probation"]
+    assert gateway["principle"] == "no direct worker internet; service-scoped egress only"
+    assert gateway["transport"] == "http_connect"
+    assert gateway["deny_ip_literal_targets"] is True
+    assert gateway["deny_non_global_resolved_addresses"] is True
+    assert gateway["default_port"] == 443
+
     assert "direct_worker_internet" in config["hard_denies"]
     assert "host_docker_socket" in config["hard_denies"]
     assert "host_containerd_socket" in config["hard_denies"]
+    assert "cloud_metadata" in config["hard_denies"]
