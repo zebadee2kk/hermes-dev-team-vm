@@ -61,7 +61,6 @@ def test_trust_ingestion_is_derived_and_raw_trust_endpoint_is_removed(tmp_path, 
         )
         assert owner_claim.status_code == 403
 
-        # The superseded endpoint accepted caller-authored trust values; it must stay gone.
         bypass = client.post(
             "/v1/trust-envelopes",
             json={
@@ -198,3 +197,56 @@ def test_duplicate_decision_id_with_changed_content_is_rejected(tmp_path, monkey
         payload["decision"]["recommendation"] = "Option B"
         conflict = client.post("/v1/governance/decisions", headers=HEADERS, json=payload)
         assert conflict.status_code == 409
+
+
+def test_denial_recurrence_is_durable_across_controller_restart(tmp_path, monkeypatch) -> None:
+    app = _app(tmp_path, monkeypatch)
+    payload = {
+        "project_id": "P1",
+        "task_id": "T1",
+        "signature": "github:default-branch-push",
+        "reason": "default branch push denied",
+        "material": False,
+    }
+    with TestClient(app) as client:
+        client.post("/v1/projects", json={"project_id": "P1", "name": "demo"})
+        first = client.post("/v1/governance/denials", headers=HEADERS, json=payload)
+        second = client.post("/v1/governance/denials", headers=HEADERS, json=payload)
+        assert first.status_code == second.status_code == 200
+        assert first.json()["directive"] == "retry_safer_alternative"
+        assert second.json()["state"]["consecutive"] == 2
+
+    restarted = _app(tmp_path, monkeypatch)
+    with TestClient(restarted) as client:
+        third = client.post("/v1/governance/denials", headers=HEADERS, json=payload)
+        assert third.status_code == 200
+        assert third.json()["directive"] == "escalate_human"
+        assert third.json()["owner_interrupt_required"] is True
+        assert third.json()["state"]["consecutive"] == 3
+        assert third.json()["state"]["total"] == 3
+
+        safe = client.post(
+            "/v1/governance/denials/safe-alternative",
+            headers=HEADERS,
+            json={
+                "project_id": "P1",
+                "task_id": "T1",
+                "signature": "github:default-branch-push",
+            },
+        )
+        assert safe.status_code == 200
+        assert safe.json()["consecutive"] == 0
+        assert safe.json()["total"] == 3
+
+        state = client.get(
+            "/v1/governance/denials/state",
+            headers=HEADERS,
+            params={
+                "project_id": "P1",
+                "task_id": "T1",
+                "signature": "github:default-branch-push",
+            },
+        )
+        assert state.status_code == 200
+        assert state.json()["consecutive"] == 0
+        assert state.json()["total"] == 3
