@@ -123,6 +123,28 @@ class DecisionRow(Base):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class GovernanceDenialStateRow(Base):
+    __tablename__ = "governance_denial_states"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id",
+            "task_id",
+            "signature",
+            name="uq_governance_denial_scope",
+        ),
+    )
+
+    state_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(128), index=True)
+    task_id: Mapped[str] = mapped_column(String(128), index=True)
+    signature: Mapped[str] = mapped_column(String(255), index=True)
+    consecutive: Mapped[int] = mapped_column(Integer, default=0)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    last_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_denied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class InferenceDeploymentRow(Base):
     __tablename__ = "inference_deployments"
 
