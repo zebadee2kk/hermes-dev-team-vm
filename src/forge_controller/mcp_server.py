@@ -8,13 +8,15 @@ import httpx
 from mcp.server import MCPServer
 
 from .contracts import RealityAnchor, TaskCapsule, TrustEnvelope
+from .knowledge import KnowledgeError, KnowledgeStore
 from .models import DecisionRequest
 
 mcp = MCPServer(
     "Forge Assurance",
     instructions=(
         "Narrow trusted facade for Hermes workers. Task lifecycle remains in Hermes Kanban; "
-        "these tools checkpoint Task Capsules, record evidence/provenance, and classify decisions."
+        "these tools checkpoint Task Capsules, record evidence/provenance, classify decisions, "
+        "and provide read-only access to the compiled knowledge wiki."
     ),
 )
 
@@ -96,6 +98,13 @@ def _client() -> ForgeAssuranceClient:
     return ForgeAssuranceClient(os.environ.get("FORGE_INTERNAL_URL", "http://127.0.0.1:8080"))
 
 
+def _knowledge_store() -> KnowledgeStore:
+    root = os.environ.get("FORGE_KNOWLEDGE_ROOT")
+    if not root:
+        raise RuntimeError("FORGE_KNOWLEDGE_ROOT is not configured")
+    return KnowledgeStore(root)
+
+
 def _mapping(value: object) -> dict[str, object]:
     if not isinstance(value, Mapping):
         raise TypeError("Forge assurance response must be a JSON object")
@@ -130,6 +139,27 @@ async def record_trust_envelope(envelope: TrustEnvelope) -> dict[str, object]:
 async def classify_decision(decision: DecisionRequest) -> dict[str, object]:
     """Classify whether a proposed decision is autonomous or needs owner authority."""
     return await _client().classify_decision(decision)
+
+
+@mcp.tool()
+async def knowledge_search(query: str, limit: int = 10) -> list[str]:
+    """Search active compiled wiki files. This does not search or execute raw sources."""
+    return _knowledge_store().search(query, limit=max(1, min(limit, 25)))
+
+
+@mcp.tool()
+async def knowledge_read_page(slug: str) -> str:
+    """Read one compiled wiki page by canonical slug."""
+    try:
+        return _knowledge_store().read_page(slug)
+    except KnowledgeError as exc:
+        return f"knowledge page unavailable: {exc}"
+
+
+@mcp.tool()
+async def knowledge_lint() -> dict[str, object]:
+    """Report orphan, broken-link and unknown-source problems without modifying knowledge."""
+    return _knowledge_store().lint().model_dump(mode="json")
 
 
 def main() -> None:
