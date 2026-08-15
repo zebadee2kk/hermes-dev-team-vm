@@ -26,6 +26,39 @@ profiles:
       pids: 256
       tmpfs_mb: 512
       timeout_seconds: 1800
+  codex-probation:
+    intended_for: probation-001-engineering-leaf-worker-only
+    runtime: gvisor
+    runtime_name: runsc
+    enabled: true
+    allow_root_inside: false
+    user: "65532:65532"
+    image_digest_required: true
+    read_only_rootfs: true
+    cap_drop: [ALL]
+    no_new_privileges: true
+    docker_socket: never
+    network: forge-codex-internal
+    direct_internet: false
+    proxy: http://forge-codex-egress:3128
+    required_capability_grant: capability:codex-probation-openai-egress
+    allowed_upstream_hosts:
+      - chatgpt.com
+      - auth.openai.com
+    codex_home_volume: forge-codex-probation-auth
+    forge_secret_refs: forbidden
+    workspace_mounts: task_scoped_only
+    note: >-
+      Exceptional profile for the first technology probation only. The Hand joins an internal-only Docker
+      network; its HTTP(S) proxy is a CONNECT-only service bound to exact OpenAI hosts on 443 and rejects
+      private/reserved DNS resolutions. The Codex state volume is dedicated to this candidate and must never
+      contain Forge, LiteLLM, GitHub or host-control credentials.
+    limits:
+      cpus: 2
+      memory_mb: 4096
+      pids: 256
+      tmpfs_mb: 512
+      timeout_seconds: 1800
   high:
     intended_for: hostile-high-risk-or-client-policy
     runtime: not_implemented
@@ -35,9 +68,14 @@ profiles:
     network: none
     note: Fail closed until the stronger isolation backend is implemented and tested.
 
-future_capability_gateway:
-  enabled: false
-  principle: no direct worker internet; operation/resource scoped egress only
+capability_gateway:
+  enabled_profiles:
+    - codex-probation
+  principle: no direct worker internet; service-scoped egress only
+  transport: http_connect
+  deny_ip_literal_targets: true
+  deny_non_global_resolved_addresses: true
+  default_port: 443
 
 hard_denies:
   - host_docker_socket

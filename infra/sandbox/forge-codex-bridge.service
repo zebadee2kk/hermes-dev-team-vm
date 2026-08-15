@@ -1,0 +1,35 @@
+[Unit]
+Description=Hermes Forge Codex gVisor stdio bridge
+After=docker.service network.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=forge-sandbox
+Group=forge-codex
+SupplementaryGroups=docker
+RuntimeDirectory=forge-codex
+RuntimeDirectoryMode=0770
+ExecStart=/opt/forge/venv/bin/forge-codex-bridge
+Restart=on-failure
+RestartSec=3
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX
+ReadOnlyPaths=/var/lib/forge/workspaces
+
+[Install]
+WantedBy=multi-user.target

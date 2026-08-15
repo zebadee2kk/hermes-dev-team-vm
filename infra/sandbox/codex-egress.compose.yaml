@@ -1,0 +1,33 @@
+services:
+  codex-egress:
+    build:
+      context: ../..
+      dockerfile: docker/capability-proxy.Dockerfile
+      args:
+        BASE_IMAGE: ${FORGE_PROXY_BASE_IMAGE:?set a digest-pinned python base image}
+    image: forge-capability-proxy:local
+    container_name: forge-codex-egress
+    environment:
+      FORGE_PROXY_ALLOWED_HOSTS: ${FORGE_CODEX_ALLOWED_HOSTS:-chatgpt.com,auth.openai.com}
+    networks:
+      - codex-internal
+      - codex-egress
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
+    user: "65532:65532"
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.50
+    restart: unless-stopped
+
+networks:
+  codex-internal:
+    name: forge-codex-internal
+    internal: true
+  codex-egress:
+    name: forge-codex-egress-network

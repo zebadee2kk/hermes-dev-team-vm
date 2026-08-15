@@ -31,6 +31,7 @@ def main() -> int:
     report: dict[str, object] = {
         "candidate_id": "hermes-codex-app-server-runtime",
         "mutated_configuration": False,
+        "working_directory": str(Path.cwd().resolve()),
         "checks": {},
     }
     checks = report["checks"]
@@ -66,7 +67,9 @@ def main() -> int:
         "path": codex_path,
     }
 
-    with tempfile.TemporaryDirectory(prefix="forge-codex-schema-") as temp_dir:
+    # Keep generated files inside the probation workspace. The trusted Codex shim mounts only that
+    # exact workspace into the gVisor Hand and deliberately rejects host-/tmp output paths.
+    with tempfile.TemporaryDirectory(prefix=".forge-codex-schema-", dir=str(Path.cwd())) as temp_dir:
         schema = _run(
             codex_path,
             "app-server",
@@ -95,7 +98,7 @@ def main() -> int:
     )
     report["ready"] = all(bool(checks[name].get("ok")) for name in required)
     report["next_gate"] = (
-        "outer worker isolation + Task Capsule staging proof; this preflight does not enable codex_app_server"
+        "device-login + live gVisor/proxy isolation proof; this preflight does not enable codex_app_server"
     )
     print(json.dumps(report, indent=2, sort_keys=True))
     return 0 if report["ready"] else 2

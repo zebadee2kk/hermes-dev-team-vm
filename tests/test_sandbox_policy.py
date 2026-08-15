@@ -45,6 +45,7 @@ def test_normal_plan_is_fail_closed_and_mounts_only_task_workspace(tmp_path) -> 
     assert plan.user == "65532:65532"
     assert plan.workspace_source == str(workspace.resolve())
     assert plan.workspace_destination == "/workspace"
+    assert plan.named_volumes == []
     assert plan.tmpfs["/tmp"].startswith("rw,noexec,nosuid,nodev")
 
     joined = " ".join(command)
@@ -59,6 +60,81 @@ def test_normal_plan_is_fail_closed_and_mounts_only_task_workspace(tmp_path) -> 
     assert f"src={workspace.resolve()},dst=/workspace,rw" in joined
     assert f"src={root.resolve()},dst=/workspace" not in joined
     assert f"src={tmp_path.resolve()},dst=/workspace" not in joined
+
+
+def test_codex_probation_profile_has_only_internal_proxy_and_dedicated_state_volume(tmp_path) -> None:
+    root = tmp_path / "workspaces"
+    workspace = root / "P1" / "T1"
+    workspace.mkdir(parents=True)
+    planner = SandboxPlanner(root)
+    launch = request(
+        workspace,
+        profile=planner.CODEX_PROFILE,
+        capability_grant_refs=[planner.CODEX_GRANT_REF],
+    )
+
+    plan = planner.plan(launch)
+    command = docker_run_command(plan)
+    joined = " ".join(command)
+
+    assert plan.network_mode == "forge-codex-internal"
+    assert plan.secret_refs == []
+    assert len(plan.named_volumes) == 1
+    volume = plan.named_volumes[0]
+    assert volume.source == "forge-codex-probation-auth"
+    assert volume.destination == "/codex-home"
+    assert volume.read_only is False
+    assert plan.environment["CODEX_HOME"] == "/codex-home"
+    assert plan.environment["HTTPS_PROXY"] == "http://forge-codex-egress:3128"
+    assert plan.environment["HTTP_PROXY"] == "http://forge-codex-egress:3128"
+    assert "--network forge-codex-internal" in joined
+    assert "type=volume,src=forge-codex-probation-auth,dst=/codex-home,rw" in joined
+    assert "/var/run/docker.sock" not in joined
+
+
+def test_codex_probation_profile_requires_exact_capability_grant(tmp_path) -> None:
+    root = tmp_path / "workspaces"
+    workspace = root / "P1" / "T1"
+    workspace.mkdir(parents=True)
+    planner = SandboxPlanner(root)
+
+    with pytest.raises(SandboxPolicyError, match="dedicated OpenAI egress"):
+        planner.plan(request(workspace, profile=planner.CODEX_PROFILE))
+    with pytest.raises(SandboxPolicyError, match="dedicated OpenAI egress"):
+        planner.plan(
+            request(
+                workspace,
+                profile=planner.CODEX_PROFILE,
+                capability_grant_refs=[planner.CODEX_GRANT_REF, "capability:extra"],
+            )
+        )
+
+
+def test_codex_probation_profile_rejects_forge_secret_refs_and_proxy_override(tmp_path) -> None:
+    root = tmp_path / "workspaces"
+    workspace = root / "P1" / "T1"
+    workspace.mkdir(parents=True)
+    planner = SandboxPlanner(root)
+    grants = [planner.CODEX_GRANT_REF]
+
+    with pytest.raises(SandboxPolicyError, match="does not accept Forge secret refs"):
+        planner.plan(
+            request(
+                workspace,
+                profile=planner.CODEX_PROFILE,
+                capability_grant_refs=grants,
+                secret_refs=["vault:forge-master"],
+            )
+        )
+    with pytest.raises(SandboxPolicyError, match="controls proxy/home"):
+        planner.plan(
+            request(
+                workspace,
+                profile=planner.CODEX_PROFILE,
+                capability_grant_refs=grants,
+                environment={"HTTPS_PROXY": "http://evil.example:8080"},
+            )
+        )
 
 
 def test_workspace_escape_is_rejected(tmp_path) -> None:
