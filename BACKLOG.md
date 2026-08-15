@@ -69,20 +69,24 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 
 - [x] sandbox manager/planner abstraction foundation with fail-closed normal profile
 - [x] gVisor host preflight, x86_64/ARM64-compatible install path, digest-built Hand image and evidence-producing live smoke harness; actual target-host execution proof remains open
-- [ ] high-risk stronger isolation adapter design
+- [x] high-risk stronger-isolation adapter/placement contract — Firecracker when Linux/KVM/jailer/seccomp/immutable-image prerequisites are proven, otherwise an explicitly configured external disposable-VM driver; never downgrade to the normal Hand
+- [ ] implement and live-test at least one high-risk VM/microVM execution backend
 - [x] per-task workspace/resource-limit policy foundation — one validated workspace mount, read-only root, non-root worker, CPU/RAM/PID/tmpfs limits
 - [ ] live proof Docker/containerd sockets and host/LAN metadata are unreachable from a running Hand — compromise probe exists but must run on the deployed target
 - [x] hard `network=none` baseline for ordinary autonomous Hands
 - [x] first narrow capability-egress implementation for Probation 001 — internal-only Codex Hand network, exact-host CONNECT proxy, dedicated auth volume and Brain-side UDS bridge; no Docker/sudo authority granted to Hermes
-- [ ] general capability gateway with subject/service/resource/operation/credential/expiry model and GitHub task-branch scoped write path
-- [ ] secret broker / trusted credential injection for general external services
+- [x] generic operation-scoped capability model — signed grants bind project/task/subject/service/exact resource/operation/branch/credential reference/expiry; wrong scope, default-branch writes, force push, tampering and stale/revoked grants fail closed
+- [x] GitHub task-branch broker foundation — repository-scoped GitHub App tokens, exact host-side branch push/draft PR, token revocation, remote-SHA/PR verification, malicious Git-config defenses and hardened UDS service with root-owned project/task/repository workspace registry
+- [ ] live GitHub App broker proof — deploy credentials/service, run wrong-scope/tamper negatives, perform one real task-branch push + draft PR and record token non-disclosure/revocation Reality Anchors
+- [x] non-exporting credential-binding/secret-broker foundation — systemd credential registry + short-lived trusted in-process leases; no worker/MCP/HTTP get-secret API
+- [ ] integrate additional external-service adapters through the secret broker only as required
 - [x] trusted Sandbox Broker service/API + controller UDS client foundation; execution disabled by default and timeout force-cleanup defined
 - [x] Codex probation bridge lifecycle guards — one exact workspace/image/network/auth volume, app-server/preflight command whitelist, bounded frame/elapsed time and force-cleanup on disconnect/error/timeout
 - [ ] destroy/recreate/checkpoint live tests
 
 **Exit:** compromised Hand cannot access Brain secrets/host control/LAN metadata or use an approved service outside its granted operation/resource scope.
 
-**Current status:** M4 now has a CI-green normal gVisor Hand boundary plus a deliberately narrow capability-egress implementation sufficient to deploy Probation 001 without giving Hermes Docker or sudo. This is not the generic M4 exit: live compromise evidence, generic capability/secret/GitHub grants, a stronger high-risk backend and destroy/recreate/checkpoint recovery remain open. Do not enable Codex probation workloads until the target VM records the required Reality Anchors.
+**Current status:** M4's code-level security architecture is now substantially implemented: normal gVisor Hands, evidence normalisation, the narrow Codex capability path, authenticated operation-scoped grants, a credentialless GitHub write broker/UDS service, non-exporting systemd credential bindings and a fail-closed high-risk placement contract are CI-backed. M4 is not yet an operational exit: it still needs target-host gVisor compromise evidence, a live GitHub App branch/PR proof, at least one real VM/microVM backend, and destroy/recreate/checkpoint recovery evidence. Do not enable Codex probation workloads until the target VM records the required Reality Anchors.
 
 ## M5 — Content Trust + governance UX
 
