@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes-forge.local/schemas/sandbox-launch.schema.json",
+  "title": "Forge Sandbox Launch Request",
+  "type": "object",
+  "required": [
+    "request_id",
+    "project_id",
+    "task_id",
+    "image",
+    "command",
+    "workspace_path",
+    "profile"
+  ],
+  "properties": {
+    "request_id": {"type": "string", "minLength": 1},
+    "project_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "image": {
+      "type": "string",
+      "pattern": "^.+@sha256:[0-9a-f]{64}$"
+    },
+    "command": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "workspace_path": {"type": "string", "minLength": 1},
+    "profile": {"type": "string", "const": "normal"},
+    "environment": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "capability_grant_refs": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "secret_refs": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "cpus": {"type": "number", "exclusiveMinimum": 0, "maximum": 8},
+        "memory_mb": {"type": "integer", "minimum": 256, "maximum": 32768},
+        "pids": {"type": "integer", "minimum": 32, "maximum": 2048},
+        "tmpfs_mb": {"type": "integer", "minimum": 64, "maximum": 4096},
+        "timeout_seconds": {"type": "integer", "minimum": 30, "maximum": 14400}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
