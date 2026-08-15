@@ -27,6 +27,10 @@ def parse_delay(value: str | None) -> timedelta | None:
     return timedelta(hours=parts["h"], minutes=parts["m"], seconds=parts["s"])
 
 
+def _rate_limit_state(delay: timedelta) -> ProviderState:
+    return ProviderState.THROTTLED_SHORT if delay <= timedelta(hours=1) else ProviderState.QUOTA_EXHAUSTED
+
+
 def classify_observation(obs: QuotaObservation, now: datetime | None = None) -> Availability:
     now = now or _now()
     headers = {k.lower(): v for k, v in obs.headers.items()}
@@ -47,17 +51,31 @@ def classify_observation(obs: QuotaObservation, now: datetime | None = None) -> 
     if status == 429:
         retry = parse_delay(headers.get("retry-after"))
         request_reset = parse_delay(headers.get("x-ratelimit-reset-requests"))
-        remaining = headers.get("x-ratelimit-remaining-requests")
-        if remaining == "0" and request_reset:
+        token_reset = parse_delay(headers.get("x-ratelimit-reset-tokens"))
+        remaining_requests = headers.get("x-ratelimit-remaining-requests")
+        remaining_tokens = headers.get("x-ratelimit-remaining-tokens")
+
+        if remaining_requests == "0" and request_reset:
             return Availability(
-                state=ProviderState.QUOTA_EXHAUSTED,
+                state=_rate_limit_state(request_reset),
                 retry_at=now + request_reset,
                 reason="request quota exhausted",
                 confidence=0.95,
             )
-        delay = retry or request_reset or timedelta(minutes=1)
-        state = ProviderState.THROTTLED_SHORT if delay <= timedelta(hours=1) else ProviderState.QUOTA_EXHAUSTED
-        return Availability(state=state, retry_at=now + delay, reason="rate limited", confidence=0.8)
+        if remaining_tokens == "0" and token_reset:
+            return Availability(
+                state=_rate_limit_state(token_reset),
+                retry_at=now + token_reset,
+                reason="token quota exhausted",
+                confidence=0.95,
+            )
+        delay = retry or request_reset or token_reset or timedelta(minutes=1)
+        return Availability(
+            state=_rate_limit_state(delay),
+            retry_at=now + delay,
+            reason="rate limited",
+            confidence=0.8,
+        )
     if status is not None and status >= 500:
         return Availability(
             state=ProviderState.PROVIDER_DEGRADED,
