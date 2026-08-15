@@ -68,17 +68,21 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 ## M4 — Sandbox Broker + capability gateway
 
 - [x] sandbox manager/planner abstraction foundation with fail-closed normal profile
-- [ ] live gVisor normal worker validation on x86_64 and ARM64 target paths — `runsc` runtime planner/wrapper exists; host execution proof remains
+- [x] gVisor host preflight, x86_64/ARM64-compatible install path, digest-built Hand image and evidence-producing live smoke harness; actual target-host execution proof remains open
 - [ ] high-risk stronger isolation adapter design
 - [x] per-task workspace/resource-limit policy foundation — one validated workspace mount, read-only root, non-root worker, CPU/RAM/PID/tmpfs limits
-- [ ] live proof Docker/containerd sockets and host/LAN metadata are unreachable from a running Hand
-- [x] hard no-network baseline for normal worker; destination capability proxy remains
-- [ ] capability gateway with GitHub task-branch scoped write path
-- [ ] secret broker / trusted credential injection
+- [ ] live proof Docker/containerd sockets and host/LAN metadata are unreachable from a running Hand — compromise probe exists but must run on the deployed target
+- [x] hard `network=none` baseline for ordinary autonomous Hands
+- [x] first narrow capability-egress implementation for Probation 001 — internal-only Codex Hand network, exact-host CONNECT proxy, dedicated auth volume and Brain-side UDS bridge; no Docker/sudo authority granted to Hermes
+- [ ] general capability gateway with subject/service/resource/operation/credential/expiry model and GitHub task-branch scoped write path
+- [ ] secret broker / trusted credential injection for general external services
 - [x] trusted Sandbox Broker service/API + controller UDS client foundation; execution disabled by default and timeout force-cleanup defined
+- [x] Codex probation bridge lifecycle guards — one exact workspace/image/network/auth volume, app-server/preflight command whitelist, bounded frame/elapsed time and force-cleanup on disconnect/error/timeout
 - [ ] destroy/recreate/checkpoint live tests
 
 **Exit:** compromised Hand cannot access Brain secrets/host control/LAN metadata or use an approved service outside its granted operation/resource scope.
+
+**Current status:** M4 now has a CI-green normal gVisor Hand boundary plus a deliberately narrow capability-egress implementation sufficient to deploy Probation 001 without giving Hermes Docker or sudo. This is not the generic M4 exit: live compromise evidence, generic capability/secret/GitHub grants, a stronger high-risk backend and destroy/recreate/checkpoint recovery remain open. Do not enable Codex probation workloads until the target VM records the required Reality Anchors.
 
 ## M5 — Content Trust + governance UX
 
