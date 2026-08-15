@@ -76,6 +76,13 @@ sys.exit(0)
     create_calls = [call for call in calls if call[:2] == ["profile", "create"]]
     assert [call[2] for call in create_calls] == lane_names
 
+    expected_skills = {
+        "forge-task-contract",
+        "forge-reality-anchor",
+        "forge-knowledge-compiler",
+        "forge-tech-radar",
+    }
+
     for lane, config in manifest["lanes"].items():
         assert ["-p", lane, "config", "set", "model.provider", "custom"] in calls
         assert ["-p", lane, "config", "set", "model.default", config["model"]] in calls
@@ -104,12 +111,17 @@ sys.exit(0)
         ]
         assert len(mcp_calls) == 1
         assert "FORGE_INTERNAL_URL=http://forge.invalid" in mcp_calls[0]
-        assert "DATABASE_URL" not in " ".join(mcp_calls[0])
-        assert "GROQ_API_KEY" not in " ".join(mcp_calls[0])
+        assert f"FORGE_KNOWLEDGE_ROOT={ROOT / 'knowledge'}" in mcp_calls[0]
+        joined = " ".join(mcp_calls[0])
+        assert "DATABASE_URL" not in joined
+        assert "GROQ_API_KEY" not in joined
+        assert "LITELLM_MASTER_KEY" not in joined
+        assert "FORGE_SANDBOX_BROKER_KEY" not in joined
 
         lane_root = profile_root / lane / "skills"
-        assert (lane_root / "forge-task-contract/SKILL.md").exists()
-        assert (lane_root / "forge-reality-anchor/SKILL.md").exists()
+        assert expected_skills.issubset({path.name for path in lane_root.iterdir()})
+        for skill in expected_skills:
+            assert (lane_root / skill / "SKILL.md").exists()
 
     kanban = manifest["hermes"]["kanban"]
     assert [
