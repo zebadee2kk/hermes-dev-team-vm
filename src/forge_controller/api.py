@@ -59,7 +59,7 @@ def create_app(
         finally:
             await engine.dispose()
 
-    app = FastAPI(title="Hermes Forge Controller", version="0.4.0", lifespan=lifespan)
+    app = FastAPI(title="Hermes Forge Controller", version="0.5.0", lifespan=lifespan)
 
     def repository(request: Request) -> AssuranceRepository:
         return request.app.state.repository

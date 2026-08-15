@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hermes-forge-controller"
-version = "0.4.0"
+version = "0.5.0"
 description = "Assurance, quota, routing and governance plane for Hermes autonomous engineering"
 requires-python = ">=3.11"
 dependencies = [
@@ -12,6 +12,7 @@ dependencies = [
   "asyncpg>=0.29,<1",
   "fastapi>=0.115,<1",
   "httpx>=0.27,<1",
+  "mcp>=2,<3",
   "pydantic>=2.8,<3",
   "PyYAML>=6.0,<7",
   "redis>=5,<7",
