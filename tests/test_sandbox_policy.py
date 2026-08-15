@@ -53,7 +53,9 @@ def test_normal_plan_is_fail_closed_and_mounts_only_task_workspace(tmp_path) -> 
     assert "no-new-privileges:true" in joined
     assert "/var/run/docker.sock" not in joined
     assert "/run/containerd" not in joined
-    assert str(root.resolve().parent) not in plan.workspace_source
+    assert f"src={workspace.resolve()},dst=/workspace,rw" in joined
+    assert f"src={root.resolve()},dst=/workspace" not in joined
+    assert f"src={tmp_path.resolve()},dst=/workspace" not in joined
 
 
 def test_workspace_escape_is_rejected(tmp_path) -> None:
