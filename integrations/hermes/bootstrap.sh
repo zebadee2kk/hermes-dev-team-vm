@@ -37,6 +37,10 @@ PY
 }
 
 FORGE_BASE_URL="${FORGE_BASE_URL:-$(manifest_value hermes.base_url)}"
+HERMES_PROVIDER="$(manifest_value hermes.provider)"
+HERMES_API_MODE="$(manifest_value hermes.api_mode)"
+HERMES_API_KEY_REF="$(manifest_value hermes.api_key_ref)"
+DISABLE_DIRECT_FALLBACKS="$(manifest_value hermes.disable_direct_provider_fallbacks)"
 KANBAN_DISPATCH="$(manifest_value hermes.kanban.dispatch_in_gateway)"
 KANBAN_ORCHESTRATOR="$(manifest_value hermes.kanban.orchestrator_profile)"
 KANBAN_DEFAULT_ASSIGNEE="$(manifest_value hermes.kanban.default_assignee)"
@@ -50,13 +54,15 @@ while IFS=$'\t' read -r lane model description; do
     hermes profile describe "$lane" --text "$description" >/dev/null
   fi
 
-  hermes -p "$lane" config set model.provider custom >/dev/null
+  hermes -p "$lane" config set model.provider "$HERMES_PROVIDER" >/dev/null
   hermes -p "$lane" config set model.default "$model" >/dev/null
   hermes -p "$lane" config set model.base_url "$FORGE_BASE_URL" >/dev/null
-  hermes -p "$lane" config set model.api_mode chat_completions >/dev/null
-  hermes -p "$lane" config set model.api_key '${FORGE_GATEWAY_KEY}' >/dev/null
-  hermes -p "$lane" config set fallback_providers '[]' >/dev/null
-  hermes -p "$lane" config set fallback_model '' >/dev/null
+  hermes -p "$lane" config set model.api_mode "$HERMES_API_MODE" >/dev/null
+  hermes -p "$lane" config set model.api_key "$HERMES_API_KEY_REF" >/dev/null
+  if [[ "$DISABLE_DIRECT_FALLBACKS" == "true" ]]; then
+    hermes -p "$lane" config set fallback_providers '[]' >/dev/null
+    hermes -p "$lane" config set fallback_model '' >/dev/null
+  fi
 
   # The MCP process receives only a non-secret loopback Forge URL. It does not receive
   # DATABASE_URL, provider keys, or LiteLLM credentials.
