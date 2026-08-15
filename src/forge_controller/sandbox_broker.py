@@ -12,6 +12,8 @@ from pydantic import BaseModel
 from .sandbox import SandboxLaunchRequest, SandboxPlan, SandboxPlanner, SandboxPolicyError
 from .sandbox_runtime import DockerGVisorRuntime, SandboxExecutionResult
 
+_DEFAULT_WORKSPACE_ROOT = "/var/lib/forge/workspaces"
+
 
 class SandboxExecutor(Protocol):
     async def execute(self, plan: SandboxPlan) -> SandboxExecutionResult: ...
@@ -36,10 +38,8 @@ def create_broker_app(
     execution_enabled: bool | None = None,
     broker_key: str | None = None,
 ) -> FastAPI:
-    root = workspace_root or os.environ.get("FORGE_SANDBOX_WORKSPACE_ROOT")
+    root = workspace_root or os.environ.get("FORGE_SANDBOX_WORKSPACE_ROOT") or _DEFAULT_WORKSPACE_ROOT
     if planner is None:
-        if not root:
-            raise RuntimeError("FORGE_SANDBOX_WORKSPACE_ROOT is required")
         planner = SandboxPlanner(root)
     executor = executor or DockerGVisorRuntime()
     enabled = execution_enabled
@@ -102,8 +102,4 @@ def _authorize(request: Request, expected_key: str | None) -> None:
         raise HTTPException(status_code=401, detail="invalid sandbox broker credential")
 
 
-def _default_app() -> FastAPI:
-    return create_broker_app()
-
-
-app = _default_app()
+app = create_broker_app()
