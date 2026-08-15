@@ -8,7 +8,9 @@ platforms: [linux, macos, windows]
 
 Use this Skill when new frameworks, protocols, model runtimes, memory systems, security findings or agent techniques appear worth investigating.
 
-## Filter first
+## Source policy
+
+Read `config/technology-radar-sources.yaml` when available. Social posts are discovery pointers, not evidence. Locate the underlying primary specification, repository, release, advisory, benchmark or postmortem before scoring an item.
 
 Do not equate novelty or social engagement with signal. Prefer evidence in this order:
 
@@ -28,6 +30,20 @@ A technology that reaches `test` becomes a structured candidate, not a dependenc
 `observed -> triaged -> sandbox_tested -> probation -> promoted | rejected`
 
 Record the problem it solves, integration seam, replacement scope, acceptance criteria, test plan, risks and rollback path.
+
+Before creating a compile proposal, require trusted acquisition of the primary artifact into immutable `raw/` storage with a Trust Envelope. A radar agent may queue that work; it may not write around the trusted acquisition boundary.
+
+## Scheduled radar mode
+
+When running from Hermes cron:
+
+1. inspect only the requested time window;
+2. use the source policy and high-signal scorer;
+3. `IGNORE` items are dropped;
+4. `WATCH` items may appear in the concise report but do not create implementation work;
+5. `TEST` items with a concrete primary artifact may create idempotent Hermes Kanban triage tasks assigned to `research`;
+6. do not install, clone-and-execute, adopt, compile into active knowledge, change policy, or promote anything from the scheduled scan;
+7. do not create or modify cron jobs from inside the cron run.
 
 ## Experiments
 
