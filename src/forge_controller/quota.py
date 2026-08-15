@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from .models import Availability, ProviderState, QuotaObservation
 
 _DURATION = re.compile(r"(?:(?P<h>\d+(?:\.\d+)?)h)?(?:(?P<m>\d+(?:\.\d+)?)m)?(?:(?P<s>\d+(?:\.\d+)?)s)?$")
+_LONG_QUOTA_CODES = {"insufficient_quota", "quota_exceeded", "daily_quota_exceeded"}
 
 
 def _now() -> datetime:
@@ -40,6 +41,12 @@ def classify_observation(obs: QuotaObservation, now: datetime | None = None) -> 
         return Availability(state=ProviderState.AUTH_FAILED, reason=f"HTTP {status}", confidence=0.95)
     if status == 402:
         return Availability(state=ProviderState.CREDIT_EXHAUSTED, reason="insufficient credit", confidence=0.95)
+    if status == 410 or obs.error_code == "model_deprecated":
+        return Availability(
+            state=ProviderState.OFFLINE,
+            reason="model removed/deprecated",
+            confidence=0.95,
+        )
     if status in (502, 503, 504) or obs.error_code in {"capacity_exceeded", "provider_unavailable"}:
         delay = parse_delay(headers.get("retry-after")) or timedelta(minutes=2)
         return Availability(
@@ -68,6 +75,12 @@ def classify_observation(obs: QuotaObservation, now: datetime | None = None) -> 
                 retry_at=now + token_reset,
                 reason="token quota exhausted",
                 confidence=0.95,
+            )
+        if obs.error_code in _LONG_QUOTA_CODES and not (retry or request_reset or token_reset):
+            return Availability(
+                state=ProviderState.QUOTA_EXHAUSTED,
+                reason=f"quota exhausted ({obs.error_code})",
+                confidence=0.85,
             )
         delay = retry or request_reset or token_reset or timedelta(minutes=1)
         return Availability(
