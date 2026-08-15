@@ -5,23 +5,34 @@ import yaml
 ROOT = Path(__file__).parents[1]
 
 
-def test_lane_manifest_uses_stable_forge_aliases_and_no_direct_provider_models() -> None:
-    manifest = yaml.safe_load((ROOT / "config/hermes-lanes.yaml").read_text())
+def test_worker_lane_manifest_is_authoritative_and_uses_stable_forge_aliases() -> None:
+    manifest = yaml.safe_load((ROOT / "config/worker-lanes.yaml").read_text())
     assert manifest["hermes"]["provider"] == "custom"
     assert manifest["hermes"]["base_url"].endswith("/v1")
+    assert manifest["rules"]["prefer_task_skills_over_new_persistent_profiles"] is True
     for lane in manifest["lanes"].values():
+        assert lane["durable"] is True
         assert lane["model"].startswith("forge/")
         assert "deployment" not in lane["model"]
+        assert lane["description"].endswith(".")
 
 
-def test_bootstrap_does_not_inject_database_or_provider_secrets() -> None:
+def test_bootstrap_consumes_worker_lane_manifest_and_does_not_inject_secrets() -> None:
     script = (ROOT / "integrations/hermes/bootstrap.sh").read_text()
+    assert "config/worker-lanes.yaml" in script
+    assert "manifest[\"lanes\"]" in script
     assert "${FORGE_GATEWAY_KEY}" in script
     assert "LITELLM_MASTER_KEY" not in script
     assert "--env DATABASE_URL" not in script
     assert "--env GROQ_API_KEY" not in script
     assert "fallback_providers '[]'" in script
     assert "python -m forge_controller.mcp_server" in script
+    assert "LANES=(" not in script
+    assert "MODELS=(" not in script
+
+
+def test_duplicate_hermes_lane_manifest_does_not_exist() -> None:
+    assert not (ROOT / "config/hermes-lanes.yaml").exists()
 
 
 def test_forge_worker_skills_have_valid_minimal_frontmatter() -> None:
