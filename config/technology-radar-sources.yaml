@@ -1,0 +1,52 @@
+version: 1
+
+principles:
+  social_engagement_is_not_evidence: true
+  primary_artifact_preferred: true
+  production_or_reproducible_evidence_preferred: true
+  rumors_never_trigger_adoption: true
+  findings_create_candidates_or_tasks_only: true
+
+source_classes:
+  primary_specs_and_docs:
+    priority: highest
+    examples:
+      - hermes-agent.nousresearch.com
+      - modelcontextprotocol.io
+      - docs.litellm.ai
+      - official provider documentation and changelogs
+  repositories_and_releases:
+    priority: high
+    rules:
+      - prefer official repositories
+      - require a concrete release, commit, issue, benchmark, or reproducible artifact
+      - inspect maintenance activity and open failure reports before scoring
+  security_research:
+    priority: high
+    rules:
+      - prefer vendor advisories, CVEs, primary red-team reports, and reproducible research
+      - treat alleged leaks and screenshots without primary evidence as watch or ignore
+  production_postmortems:
+    priority: high
+    rules:
+      - reward measured outcomes and explicit failure modes
+  social_discovery:
+    priority: discovery_only
+    rules:
+      - use X/social posts only to locate the underlying primary artifact
+      - never promote based on likes, reposts, followers, or virality
+      - rumor-only items score ignore
+
+weekly_queries:
+  - "agent protocol production postmortem MCP release security"
+  - "coding agent production postmortem durable execution sandbox"
+  - "LLM memory knowledge compiler wiki production benchmark"
+  - "agent framework production failure postmortem release"
+  - "Claude Code Codex Gemini CLI agent security advisory tool use"
+
+kill_criteria:
+  - no concrete artifact
+  - requires replacing working tracing retries auth or orchestration without measured benefit
+  - cannot be tested through a narrow integration seam
+  - weakens Owner Charter sandbox capability or data-sensitivity controls
+  - depends on quota evasion or brittle promotional capacity
