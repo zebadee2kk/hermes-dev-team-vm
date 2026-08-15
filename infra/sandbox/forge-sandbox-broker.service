@@ -1,0 +1,37 @@
+[Unit]
+Description=Hermes Forge Sandbox Broker
+After=docker.service network.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=forge-sandbox
+Group=forge-sandbox
+SupplementaryGroups=docker
+EnvironmentFile=/etc/forge/sandbox-broker.env
+RuntimeDirectory=forge
+RuntimeDirectoryMode=0750
+StateDirectory=forge
+StateDirectoryMode=0750
+ExecStart=/opt/forge/venv/bin/uvicorn forge_controller.sandbox_broker:app --uds /run/forge/sandbox-broker.sock --workers 1
+Restart=on-failure
+RestartSec=3
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX
+ReadWritePaths=/var/lib/forge/workspaces /run/forge
+
+[Install]
+WantedBy=multi-user.target

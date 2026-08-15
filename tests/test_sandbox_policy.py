@@ -12,6 +12,7 @@ from forge_controller.sandbox import (
 
 DIGEST = "sha256:" + "a" * 64
 IMAGE = f"ghcr.io/example/forge-worker@{DIGEST}"
+LOCAL_IMAGE = "sha256:" + "b" * 64
 
 
 def request(workspace: Path, **updates: object) -> SandboxLaunchRequest:
@@ -37,6 +38,7 @@ def test_normal_plan_is_fail_closed_and_mounts_only_task_workspace(tmp_path) -> 
 
     assert plan.runtime == "runsc"
     assert plan.network_mode == "none"
+    assert plan.ipc_mode == "none"
     assert plan.read_only_rootfs is True
     assert plan.cap_drop == ["ALL"]
     assert plan.security_opt == ["no-new-privileges:true"]
@@ -48,6 +50,7 @@ def test_normal_plan_is_fail_closed_and_mounts_only_task_workspace(tmp_path) -> 
     joined = " ".join(command)
     assert "--runtime runsc" in joined
     assert "--network none" in joined
+    assert "--ipc none" in joined
     assert "--read-only" in command
     assert "--cap-drop ALL" in joined
     assert "no-new-privileges:true" in joined
@@ -83,6 +86,17 @@ def test_unpinned_image_is_rejected() -> None:
             command=["true"],
             workspace_path="/work/P1/T1",
         )
+
+
+def test_local_content_addressed_image_id_is_allowed() -> None:
+    launch = SandboxLaunchRequest(
+        project_id="P1",
+        task_id="T1",
+        image=LOCAL_IMAGE,
+        command=["true"],
+        workspace_path="/work/P1/T1",
+    )
+    assert launch.image == LOCAL_IMAGE
 
 
 @pytest.mark.parametrize(

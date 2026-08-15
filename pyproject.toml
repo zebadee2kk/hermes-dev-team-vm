@@ -22,6 +22,7 @@ dependencies = [
 
 [project.scripts]
 forge-knowledge = "forge_controller.knowledge_cli:main"
+forge-sandbox-smoke = "forge_controller.sandbox_smoke:main"
 
 [project.optional-dependencies]
 dev = [

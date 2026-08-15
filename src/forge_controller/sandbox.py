@@ -6,7 +6,9 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
 
-_IMAGE_DIGEST = re.compile(r"^.+@sha256:[0-9a-f]{64}$")
+_IMAGE_REFERENCE = re.compile(
+    r"^(?:sha256:[0-9a-f]{64}|.+@sha256:[0-9a-f]{64})$"
+)
 _ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _SECRET_ENV_FRAGMENTS = (
     "API_KEY",
@@ -47,9 +49,12 @@ class SandboxLaunchRequest(BaseModel):
 
     @field_validator("image")
     @classmethod
-    def image_must_be_digest_pinned(cls, value: str) -> str:
-        if not _IMAGE_DIGEST.fullmatch(value):
-            raise ValueError("sandbox image must be pinned by sha256 digest")
+    def image_must_be_content_addressed(cls, value: str) -> str:
+        if not _IMAGE_REFERENCE.fullmatch(value):
+            raise ValueError(
+                "sandbox image must be content-addressed as repo@sha256:<digest> "
+                "or a local sha256:<image-id>"
+            )
         return value
 
     @field_validator("environment")
@@ -76,6 +81,7 @@ class SandboxPlan(BaseModel):
     workspace_destination: str = "/workspace"
     user: str = "65532:65532"
     network_mode: str = "none"
+    ipc_mode: str = "none"
     read_only_rootfs: bool = True
     cap_drop: list[str] = Field(default_factory=lambda: ["ALL"])
     security_opt: list[str] = Field(default_factory=lambda: ["no-new-privileges:true"])
@@ -147,6 +153,8 @@ def docker_run_command(plan: SandboxPlan) -> list[str]:
         plan.container_name,
         "--network",
         plan.network_mode,
+        "--ipc",
+        plan.ipc_mode,
         "--read-only",
         "--cap-drop",
         "ALL",
