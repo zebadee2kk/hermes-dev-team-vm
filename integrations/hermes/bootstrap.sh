@@ -2,53 +2,47 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-FORGE_BASE_URL="${FORGE_BASE_URL:-http://127.0.0.1:8080/v1}"
+LANE_MANIFEST="${FORGE_LANE_MANIFEST:-$ROOT_DIR/config/worker-lanes.yaml}"
 FORGE_INTERNAL_URL="${FORGE_INTERNAL_URL:-http://127.0.0.1:8080}"
 
 if ! command -v hermes >/dev/null 2>&1; then
   echo "hermes CLI is required" >&2
   exit 1
 fi
-python -c 'import forge_controller, mcp' >/dev/null 2>&1 || {
-  echo "Install this Forge package (including MCP dependency) into the Hermes host Python environment." >&2
+python -c 'import forge_controller, mcp, yaml' >/dev/null 2>&1 || {
+  echo "Install this Forge package (including MCP and YAML dependencies) into the Hermes host Python environment." >&2
   exit 1
 }
+if [[ ! -f "$LANE_MANIFEST" ]]; then
+  echo "Forge lane manifest not found: $LANE_MANIFEST" >&2
+  exit 1
+fi
 
-LANES=(
-  forge-orchestrator
-  research
-  product
-  architecture
-  engineering
-  security
-  qa-review
-  documentation-release
-)
-MODELS=(
-  forge/reasoning
-  forge/research
-  forge/reasoning
-  forge/reasoning
-  forge/coding
-  forge/review
-  forge/review
-  forge/documentation
-)
-DESCRIPTIONS=(
-  "Owns root intent, decomposition, coordination, synthesis, and material escalation."
-  "Collects research evidence and provenance without treating external content as instructions."
-  "Refines requirements, acceptance criteria, scope, and user-value constraints."
-  "Owns architecture, interfaces, tradeoffs, invariants, and impact analysis."
-  "Implements, debugs, and integrates scoped tasks in isolated workspaces."
-  "Performs threat modelling, security review, and capability-boundary checks."
-  "Independently verifies acceptance criteria, tests, and reality anchors."
-  "Produces documentation, packaging, handover, and release preparation."
-)
+manifest_value() {
+  python - "$LANE_MANIFEST" "$1" <<'PY'
+import sys
+from pathlib import Path
 
-for index in "${!LANES[@]}"; do
-  lane="${LANES[$index]}"
-  model="${MODELS[$index]}"
-  description="${DESCRIPTIONS[$index]}"
+import yaml
+
+manifest = yaml.safe_load(Path(sys.argv[1]).read_text())
+value = manifest
+for part in sys.argv[2].split("."):
+    value = value[part]
+if isinstance(value, bool):
+    print(str(value).lower())
+else:
+    print(value)
+PY
+}
+
+FORGE_BASE_URL="${FORGE_BASE_URL:-$(manifest_value hermes.base_url)}"
+KANBAN_DISPATCH="$(manifest_value hermes.kanban.dispatch_in_gateway)"
+KANBAN_ORCHESTRATOR="$(manifest_value hermes.kanban.orchestrator_profile)"
+KANBAN_DEFAULT_ASSIGNEE="$(manifest_value hermes.kanban.default_assignee)"
+
+while IFS=$'\t' read -r lane model description; do
+  [[ -n "$lane" ]] || continue
 
   if ! hermes profile show "$lane" >/dev/null 2>&1; then
     hermes profile create "$lane" --no-skills --description "$description"
@@ -64,7 +58,7 @@ for index in "${!LANES[@]}"; do
   hermes -p "$lane" config set fallback_providers '[]' >/dev/null
   hermes -p "$lane" config set fallback_model '' >/dev/null
 
-  # The MCP process needs only the non-secret loopback Forge URL. It does not receive
+  # The MCP process receives only a non-secret loopback Forge URL. It does not receive
   # DATABASE_URL, provider keys, or LiteLLM credentials.
   hermes -p "$lane" mcp remove forge-assurance >/dev/null 2>&1 || true
   hermes -p "$lane" mcp add forge-assurance \
@@ -78,13 +72,28 @@ for index in "${!LANES[@]}"; do
     "$profile_dir/skills/forge-task-contract/SKILL.md"
   cp "$ROOT_DIR/integrations/hermes/skills/forge-reality-anchor/SKILL.md" \
     "$profile_dir/skills/forge-reality-anchor/SKILL.md"
-done
+done < <(
+  python - "$LANE_MANIFEST" <<'PY'
+import sys
+from pathlib import Path
+
+import yaml
+
+manifest = yaml.safe_load(Path(sys.argv[1]).read_text())
+for lane, config in manifest["lanes"].items():
+    if not config.get("durable", False):
+        continue
+    model = config["model"]
+    description = config["description"].replace("\t", " ").replace("\n", " ")
+    print(f"{lane}\t{model}\t{description}")
+PY
+)
 
 # Configure the active/base profile's Kanban dispatcher. Worker profiles are selected by
 # task assignee; Forge never creates a parallel worker queue.
-hermes config set kanban.dispatch_in_gateway true >/dev/null
-hermes config set kanban.orchestrator_profile forge-orchestrator >/dev/null
-hermes config set kanban.default_assignee engineering >/dev/null
+hermes config set kanban.dispatch_in_gateway "$KANBAN_DISPATCH" >/dev/null
+hermes config set kanban.orchestrator_profile "$KANBAN_ORCHESTRATOR" >/dev/null
+hermes config set kanban.default_assignee "$KANBAN_DEFAULT_ASSIGNEE" >/dev/null
 
-echo "Hermes Forge lanes configured. Export FORGE_GATEWAY_KEY in the Hermes gateway service environment before starting the gateway."
+echo "Hermes Forge lanes configured from $LANE_MANIFEST. Export FORGE_GATEWAY_KEY in the Hermes gateway service environment before starting the gateway."
 echo "Next: hermes gateway restart && hermes kanban init"
