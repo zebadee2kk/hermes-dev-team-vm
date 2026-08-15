@@ -40,24 +40,29 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 - [ ] privacy/terms evidence per deployment — qualification gate now requires terms evidence, passing smoke test and positive capability measurements; automated evidence collection/classification remains
 - [x] LiteLLM integration foundation — Forge-approved exact deployment aliases, environment-reference credentials, deterministic config materialization, atomic publish and PostgreSQL-backed renderer implemented
 - [ ] LiteLLM runtime reconciliation — controlled restart/roll only on config hash change and post-reload verification belong to deployment automation
-- [ ] `WAITING_COMPUTE` block/wake contract with Hermes — durable Forge placement/wake behaviour exists; Hermes block/unblock adapter remains M3 integration work
+- [ ] `WAITING_COMPUTE` block/wake contract with Hermes — durable Forge placement/wake behaviour and structured Model Gateway 503 exist; supported Hermes task-context block/unblock bridge remains M3 work
 
 **Exit:** quota exhaustion swaps inference deployment using the same Task Capsule; all-compatible-compute exhaustion blocks then resumes safely.
 
-**Current status:** M2 now has a complete provider lifecycle foundation: discover -> quarantine -> qualify -> persist -> Forge place -> exact LiteLLM deployment alias. Fake-provider restart-safe failover is covered by CI and four real provider adapters are implemented from current provider contracts. Remaining M2 work is active health probing/evidence automation and one live credentialed end-to-end provider/LiteLLM failover test; Hermes block/unblock integration intentionally starts in M3.
+**Current status:** M2 now has a complete provider lifecycle foundation: discover -> quarantine -> qualify -> persist -> Forge place -> exact LiteLLM deployment alias. Fake-provider restart-safe failover is covered by CI and four real provider adapters are implemented from current provider contracts. Remaining M2 work is active health probing/evidence automation and one live credentialed end-to-end provider/LiteLLM failover test; Hermes block/unblock integration intentionally remains with M3.
 
 ## M3 — Hermes execution integration
 
-- [ ] reference Hermes installation/config
-- [ ] stable lane/profile definitions from `config/worker-lanes.yaml`
-- [ ] task-scoped Skills convention/library
-- [ ] Task Capsule adapter for Kanban task start/handoff/completion
-- [ ] Forge MCP/API facade for assurance/routing/decision/trust services
-- [ ] structured result/anchor ingestion
-- [ ] human/compute block-unblock mapping
-- [ ] external runtime lane interface; implement at least one of Codex/Claude Code/OpenCode after Hermes-native lane works
+- [x] reference Hermes integration/config foundation — compatibility target pinned to the reviewed upstream Hermes release; manifest-driven bootstrap implemented and exercised against a fake Hermes CLI
+- [x] stable lane/profile definitions generated from authoritative `config/worker-lanes.yaml`
+- [x] task-scoped Skills convention/library foundation — Task Capsule and Reality Anchor process Skills installed per durable lane
+- [x] Task Capsule adapter foundation for Kanban start/resume/handoff/review/completion through Skills + narrow Forge MCP checkpoints
+- [x] stable Forge Model Gateway — Hermes lanes retain `forge/<capability>` identities while Forge performs policy/quota placement to exact LiteLLM deployment aliases
+- [x] Forge MCP/API facade for capsule, evidence, trust/provenance and decision classification; provider selection remains implicit through the Model Gateway
+- [x] structured result/anchor ingestion foundation — worker-result schema, Reality Anchor MCP path and bounded external-runtime result contract
+- [ ] live Hermes-native staging smoke: raw idea -> Kanban decomposition -> lane dispatch -> capsule checkpoint -> implementation -> Reality Anchor -> review/complete
+- [ ] human/compute block-unblock mapping — Forge returns structured `WAITING_COMPUTE`, but the reviewed custom-provider request path exposes no supported dynamic Kanban task id; do not mutate Hermes SQLite behind its back
+- [x] external runtime lane interface contract — bounded Task Capsule/workspace/grant/result schema defined
+- [ ] implement one external runtime adapter only after Hermes-native staging passes and the M4 Sandbox Broker/capability boundary exists
 
 **Exit:** raw idea -> Hermes decomposition -> durable work -> Task Capsules -> autonomous implementation/verification without a Forge-owned parallel DAG.
+
+**Current status:** M3 integration foundation is implemented without introducing a second execution queue. All durable profile/model configuration comes from one lane manifest, direct Hermes provider fallback is disabled, and external runtime adapters remain disabled by policy. M3 exit is not yet satisfied: it requires a live Hermes staging vertical test and a supported task-context bridge for automatic compute blocking/unblocking.
 
 ## M4 — Sandbox Broker + capability gateway
 
