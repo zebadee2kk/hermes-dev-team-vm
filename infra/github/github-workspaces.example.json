@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "project_id": "forge",
+      "task_id": "example-task-id",
+      "resource": "zebadee2kk/hermes-dev-team-vm",
+      "workspace": "/var/lib/forge/workspaces/forge/example-task-id",
+      "git_common_dir": "/var/lib/forge/workspaces/forge/example-task-id/.git"
+    }
+  ]
+}

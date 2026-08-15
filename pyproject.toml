@@ -27,6 +27,7 @@ forge-sandbox-smoke = "forge_controller.sandbox_smoke:main"
 forge-codex-bridge = "forge_controller.codex_bridge:main"
 forge-codex-shim = "forge_controller.codex_bridge_client:main"
 forge-evidence = "forge_controller.evidence_cli:main"
+forge-github-broker = "forge_controller.github_broker_service:main"
 
 [project.optional-dependencies]
 dev = [
