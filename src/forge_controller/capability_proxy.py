@@ -95,7 +95,7 @@ class CapabilityConnectProxy:
             await _respond(writer, 400, "Bad Request")
         except PermissionError:
             await _respond(writer, 403, "Forbidden")
-        except (OSError, TimeoutError, asyncio.TimeoutError):
+        except (OSError, TimeoutError):
             await _respond(writer, 502, "Bad Gateway")
         finally:
             _audit(peer, target)
