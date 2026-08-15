@@ -1,0 +1,60 @@
+version: 1
+
+layers:
+  raw:
+    immutable: true
+    grounding_authority: true
+    requires_trust_envelope: true
+  wiki:
+    llm_maintained: true
+    derivative_only: true
+    format: markdown
+    claim_grounding: raw_only
+    active_pages_must_validate: true
+  schema:
+    machine_enforced: true
+    human_readable_contract: knowledge/AGENTS.md
+
+operations:
+  ingest:
+    source_by_source_preferred: true
+    create_trust_envelope_first: true
+    update_index: true
+    append_log: true
+  query:
+    read_index_first: true
+    prefer_compiled_wiki: true
+    raw_fallback_allowed: true
+    file_answers_back_as: draft
+  lint:
+    check_orphans: true
+    check_broken_links: true
+    check_unknown_sources: true
+    check_contradictions: true
+    check_staleness: true
+
+technology_radar:
+  statuses: [observed, triaged, sandbox_tested, probation, promoted, rejected]
+  prefer_primitives_over_wrappers: true
+  require_primary_artifact: true
+  require_real_workload_test: true
+  promotion:
+    min_probation_days: 14
+    min_real_workload_passes: 2
+    min_reality_anchor_count: 2
+    rollback_required: true
+    unresolved_failure_blocks: true
+  no_auto_rewrite_of_current_stack: true
+
+mcp:
+  preferred_spec: "2026-07-28"
+  stateless_remote_servers_preferred: true
+  deprecated_features_for_new_code: [roots, sampling, logging, legacy_http_sse]
+  tasks_extension_allowed_for_tool_long_running_work: true
+  hermes_kanban_remains_execution_graph: true
+
+security:
+  untrusted_external_content_is_data_not_instructions: true
+  wiki_compilation_does_not_grant_capabilities: true
+  candidate_promotion_does_not_override_owner_charter: true
+  raw_sources_never_execute: true
