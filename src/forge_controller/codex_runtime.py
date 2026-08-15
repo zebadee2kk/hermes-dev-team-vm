@@ -30,7 +30,7 @@ class CodexRuntimeConfig:
     limits: SandboxLimits = field(default_factory=SandboxLimits)
 
     @classmethod
-    def load(cls, path: str | Path = _DEFAULT_CONFIG) -> "CodexRuntimeConfig":
+    def load(cls, path: str | Path = _DEFAULT_CONFIG) -> CodexRuntimeConfig:
         source = Path(path)
         values = _read_root_config(source)
         missing = sorted(set(_ALLOWED_KEYS).difference(values))
