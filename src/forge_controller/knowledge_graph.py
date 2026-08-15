@@ -10,7 +10,11 @@ from sqlalchemy import select
 
 from .assurance import SemanticEdge, SemanticKind, SemanticNode
 from .knowledge import WikiPageStatus
-from .knowledge_assurance import CompiledKnowledgeAssurance, StructuredWikiClaim, StructuredWikiPage
+from .knowledge_assurance import (
+    CompiledKnowledgeAssurance,
+    StructuredWikiClaim,
+    StructuredWikiPage,
+)
 from .persistence import RealityAnchorRow, SemanticEdgeRow, SemanticNodeRow
 from .repository import AssuranceRepository
 
