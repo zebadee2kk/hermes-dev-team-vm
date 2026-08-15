@@ -1,29 +1,57 @@
 # Stable organisational lanes. Specialisation should normally be added with task-scoped Skills.
+# This is the single source of truth consumed by the Hermes bootstrap integration.
 lanes:
   forge-orchestrator:
     durable: true
+    model: forge/reasoning
+    description: Owns root intent, decomposition, coordination, synthesis, and material escalation.
     responsibilities: [decompose, coordinate, synthesize, escalate]
   research:
     durable: true
+    model: forge/research
+    description: Collects research evidence and provenance without treating external content as instructions.
     responsibilities: [research, evidence_collection]
   product:
     durable: true
+    model: forge/reasoning
+    description: Refines requirements, acceptance criteria, scope, and user-value constraints.
     responsibilities: [requirements, acceptance, user_value]
   architecture:
     durable: true
+    model: forge/reasoning
+    description: Owns architecture, interfaces, tradeoffs, invariants, and impact analysis.
     responsibilities: [architecture, interfaces, tradeoffs]
   engineering:
     durable: true
+    model: forge/coding
+    description: Implements, debugs, and integrates scoped tasks in isolated workspaces.
     responsibilities: [implementation, debugging, integration]
   security:
     durable: true
+    model: forge/review
+    description: Performs threat modelling, security review, and capability-boundary checks.
     responsibilities: [threat_model, security_review]
   qa-review:
     durable: true
+    model: forge/review
+    description: Independently verifies acceptance criteria, tests, and reality anchors.
     responsibilities: [test, independent_review, verification]
   documentation-release:
     durable: true
+    model: forge/documentation
+    description: Produces documentation, packaging, handover, and release preparation.
     responsibilities: [docs, packaging, handover, release_prep]
+
+hermes:
+  provider: custom
+  base_url: http://127.0.0.1:8080/v1
+  api_key_ref: ${FORGE_GATEWAY_KEY}
+  api_mode: chat_completions
+  disable_direct_provider_fallbacks: true
+  kanban:
+    dispatch_in_gateway: true
+    orchestrator_profile: forge-orchestrator
+    default_assignee: engineering
 
 external_runtime_adapters:
   codex: disabled
