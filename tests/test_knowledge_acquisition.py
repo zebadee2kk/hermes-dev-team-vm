@@ -12,7 +12,12 @@ from forge_controller.knowledge_acquisition import (
     TrustedKnowledgeAcquisition,
 )
 from forge_controller.models import Sensitivity
-from forge_controller.persistence import SemanticNodeRow, create_schema, make_engine, make_session_factory
+from forge_controller.persistence import (
+    SemanticNodeRow,
+    create_schema,
+    make_engine,
+    make_session_factory,
+)
 from forge_controller.repository import AssuranceRepository
 
 
