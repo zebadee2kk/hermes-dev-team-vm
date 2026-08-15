@@ -54,7 +54,7 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 - [x] Task Capsule adapter foundation for Kanban start/resume/handoff/review/completion through Skills + narrow Forge MCP checkpoints
 - [x] stable Forge Model Gateway — Hermes lanes retain `forge/<capability>` identities while Forge performs policy/quota placement to exact LiteLLM deployment aliases
 - [x] Forge MCP/API facade for capsule, evidence, trust/provenance and decision classification; provider selection remains implicit through the Model Gateway
-- [x] compiled wiki read-only MCP surface — search/read/lint only; raw mutation and technology promotion remain trusted-control operations
+- [x] compiled wiki read-only MCP surface — search/read/lint only; acquisition, compilation, stale mutation and technology promotion remain trusted-control operations
 - [x] structured result/anchor ingestion foundation — worker-result schema, Reality Anchor MCP path and bounded external-runtime result contract
 - [ ] live Hermes-native staging smoke: raw idea -> Kanban decomposition -> lane dispatch -> capsule checkpoint -> implementation -> Reality Anchor -> review/complete
 - [ ] human/compute block-unblock mapping — Forge returns structured `WAITING_COMPUTE`, but the reviewed custom-provider request path exposes no supported dynamic Kanban task id; do not mutate Hermes SQLite behind its back
@@ -82,7 +82,7 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 
 ## M5 — Content Trust + governance UX
 
-- [ ] trust-envelope ingestion for web/tool/repo/subagent outputs
+- [ ] general trust-envelope ingestion for all web/tool/repo/subagent outputs — compiled-knowledge acquisition now provides the first concrete trusted path
 - [ ] taint propagation through transformations/handoffs
 - [ ] injection/suspicion hook interface
 - [ ] L0–L3 decision records and risk scoring
@@ -96,8 +96,9 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 
 - [x] typed semantic node/edge persistence foundation
 - [x] reality-anchor persistence foundation
-- [ ] claim/anchor freshness and stale-impact traversal
-- [ ] compiled-wiki source/entity/claim/contradiction/supersession graph mirroring
+- [x] compiled-wiki source/page/claim/contradiction/supersession graph mirroring
+- [x] compiled-knowledge reverse-dependency stale-impact traversal + affected Reality Anchor invalidation
+- [ ] broader claim/anchor freshness policy outside the compiled-knowledge graph
 - [ ] request re-validation work through Hermes when anchors or compiled knowledge become stale
 - [ ] protected acceptance/security/Charter invariants
 - [ ] risk-adaptive independent review policy
@@ -109,14 +110,17 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 - [x] Karpathy-style compiled knowledge foundation — immutable content-addressed `raw/`, derivative Markdown `wiki/`, generated index and append-only log
 - [x] machine-enforced claim provenance — asserted/inferred origin, `raw:` grounding only and no wiki-to-wiki self-grounding
 - [x] deterministic local wiki search + orphan/broken-link/unknown-source lint foundation
+- [x] structured fact lifecycle — `fact_key`, explicit contradiction/supersession relations, review deadlines and machine-readable `wiki/_meta/` sidecars
+- [x] trusted acquisition pipeline foundation — approved normalized acquisition + Trust Envelope/integrity bindings -> immutable raw source -> proposed/quarantined compile proposal
+- [x] shared/global knowledge rejects non-PUBLIC content and cross-project/URL/integrity binding mismatches
+- [x] contradiction/supersession/staleness automation linked to semantic graph reverse-impact traversal and Reality Anchors
 - [x] evidence-weighted high-signal technology intake filter (`ignore | watch | test`) that ignores social engagement metrics
 - [x] technology candidate lifecycle/contracts — observed -> triaged -> sandbox_tested -> probation -> promoted/rejected
 - [x] anchored candidate promotion gate — probation, passing real-workload evaluations, Reality Anchors, no unresolved failure and rollback required
 - [x] Hermes task-scoped knowledge compiler + technology radar Skills
-- [x] Hermes read-only compiled-wiki MCP access; raw ingest/promotion not exposed to ordinary workers
-- [ ] trusted automated ingest path from approved web/repo/tool acquisition -> Trust Envelope -> immutable raw source -> compiled-page proposal
-- [ ] contradiction/supersession/staleness automation linked to semantic graph impact traversal
-- [ ] recurring high-signal intake, knowledge lint and weekly candidate digest through Hermes Kanban
+- [x] Hermes read-only compiled-wiki MCP access; acquisition/raw mutation/compilation/promotion not exposed to ordinary workers
+- [x] recurring maintenance/radar configuration — script-only lint + digest and weekly evidence-gated radar through Hermes cron; findings/candidates flow into Hermes Kanban; deployment remains explicit opt-in
+- [x] targeted compiled-knowledge trust-boundary/poisoning regression foundation
 - [ ] canonical micro-evals for initial priors
 - [ ] real-task anchored outcome scoring
 - [x] persistent deployment capability-score foundation with uncertainty metadata
@@ -128,7 +132,7 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 
 **Exit:** project knowledge compounds as a grounded inspectable artifact, while routing/Skills/technology choices improve from measured outcomes without allowing learned or externally sourced state to weaken Charter/policy/security.
 
-**Current status:** the compiled knowledge and technology-radar foundation is implemented. It deliberately does not yet automate web/X ingestion or promote any new framework. The next knowledge-plane work is trusted acquisition + Trust Envelope automation, semantic stale/contradiction propagation, and a real candidate probation trial.
+**Current status:** the compiled-knowledge assurance slice is implemented in code: trusted acquisition stops at a proposal, fact conflicts/supersession can stale dependent graph nodes and Reality Anchors, and Hermes maintenance/radar jobs are defined with script-only zero-model paths where reasoning is unnecessary. Runtime cron installation is intentionally opt-in and still needs to be enabled on a deployed Hermes host. The largest unproven knowledge-radar item is now a real 14+ day candidate probation/rollback trial; broader evaluation/gardening work remains open.
 
 ## M8 — Deployment automation
 
@@ -143,14 +147,15 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 
 ## M9 — Adversarial autonomous acceptance
 
-- [ ] prompt-injection and multi-agent trust-laundering corpus
+- [ ] broad prompt-injection and multi-agent trust-laundering corpus
 - [ ] malicious dependency/container-escape assumptions tests
 - [ ] Docker-socket/host-control negative tests
 - [ ] credential/approved-domain exfiltration tests
 - [ ] LAN/metadata/egress bypass tests
 - [ ] test/acceptance-weakening detection
 - [ ] runaway/repeated-denial/quota-storm/budget-escape tests
-- [ ] memory/learning/compiled-knowledge poisoning tests
+- [x] targeted compiled-knowledge poisoning/trust-boundary regression foundation
+- [ ] memory/learning poisoning tests
 - [ ] corrupt/replayed capsule/graph recovery
 - [ ] L3 capability bypass tests
 
