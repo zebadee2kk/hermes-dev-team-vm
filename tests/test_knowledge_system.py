@@ -6,17 +6,45 @@ from pydantic import ValidationError
 from forge_controller.knowledge import (
     CandidateEvaluation,
     CandidateKind,
+    CandidateSignalInput,
     CandidateStatus,
     ClaimOrigin,
     EvaluationOutcome,
     KnowledgeError,
     KnowledgeStore,
+    SignalTier,
     TechnologyCandidate,
     WikiClaim,
     WikiPage,
     WikiPageStatus,
+    assess_candidate_signal,
     evaluate_promotion,
 )
+
+
+def test_high_signal_filter_rewards_artifacts_not_hype() -> None:
+    strong = assess_candidate_signal(
+        CandidateSignalInput(
+            primary_source=True,
+            concrete_artifact=True,
+            reproducible=True,
+            production_evidence=True,
+            measurable_results=True,
+            independent_corroboration=True,
+        )
+    )
+    hype = assess_candidate_signal(
+        CandidateSignalInput(
+            primary_source=False,
+            concrete_artifact=False,
+            rumor_only=True,
+            marketing_only=True,
+        )
+    )
+    assert strong.tier == SignalTier.TEST
+    assert strong.score >= 70
+    assert hype.tier == SignalTier.IGNORE
+    assert hype.score == 0
 
 
 def test_raw_sources_are_immutable_and_wiki_claims_are_grounded(tmp_path) -> None:
