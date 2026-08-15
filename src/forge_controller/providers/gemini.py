@@ -14,7 +14,7 @@ class GeminiAdapter:
 
     provider = "gemini"
     models_url = "https://generativelanguage.googleapis.com/v1beta/models"
-    api_client = "hermes-forge/0.3.0"
+    api_client = "hermes-forge/0.4.0"
 
     async def discover_models(
         self,

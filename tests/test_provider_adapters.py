@@ -93,7 +93,7 @@ async def test_gemini_native_discovery_paginates_and_marks_non_generation_models
         nonlocal calls
         calls += 1
         assert request.headers["x-goog-api-key"] == "secret"
-        assert request.headers["x-goog-api-client"] == "hermes-forge/0.3.0"
+        assert request.headers["x-goog-api-client"] == "hermes-forge/0.4.0"
         if calls == 1:
             assert request.url.params["pageSize"] == "1000"
             return httpx.Response(
