@@ -6,6 +6,13 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from .assurance import (
+    CapabilityScoreRecord,
+    DecisionRecord,
+    LearningCandidate,
+    SemanticEdge,
+    SemanticNode,
+)
 from .contracts import InferenceDeployment, RealityAnchor, TaskCapsule, TrustEnvelope
 from .models import (
     Availability,
@@ -16,11 +23,16 @@ from .models import (
     Sensitivity,
 )
 from .persistence import (
+    CapabilityScoreRow,
+    DecisionRow,
     EventRow,
     InferenceDeploymentRow,
+    LearningCandidateRow,
     ProjectRow,
     QuotaObservationRow,
     RealityAnchorRow,
+    SemanticEdgeRow,
+    SemanticNodeRow,
     TaskCapsuleRow,
     TrustEnvelopeRow,
     ensure_utc,
@@ -71,6 +83,38 @@ class AssuranceRepository:
             row = (await session.execute(stmt)).scalar_one_or_none()
             return TaskCapsule.model_validate(row.payload) if row else None
 
+    async def upsert_semantic_node(self, node: SemanticNode) -> None:
+        async with self.sessions.begin() as session:
+            row = await session.get(SemanticNodeRow, node.node_id)
+            values = {
+                "project_id": node.project_id,
+                "kind": node.kind.value,
+                "external_ref": node.external_ref,
+                "label": node.label,
+                "data": node.data,
+                "stale": node.stale,
+                "updated_at": utcnow(),
+            }
+            if row is None:
+                session.add(SemanticNodeRow(node_id=node.node_id, **values))
+            else:
+                for key, value in values.items():
+                    setattr(row, key, value)
+
+    async def add_semantic_edge(self, edge: SemanticEdge) -> None:
+        async with self.sessions.begin() as session:
+            if await session.get(SemanticEdgeRow, edge.edge_id) is None:
+                session.add(
+                    SemanticEdgeRow(
+                        edge_id=edge.edge_id,
+                        project_id=edge.project_id,
+                        source_id=edge.source_id,
+                        relationship=edge.relationship,
+                        target_id=edge.target_id,
+                        metadata_json=edge.metadata,
+                    )
+                )
+
     async def record_anchor(self, anchor: RealityAnchor) -> None:
         async with self.sessions.begin() as session:
             session.add(
@@ -107,6 +151,57 @@ class AssuranceRepository:
                     acquired_at=envelope.acquired_at,
                 )
             )
+
+    async def save_decision(self, decision: DecisionRecord) -> None:
+        async with self.sessions.begin() as session:
+            row = await session.get(DecisionRow, decision.decision_id)
+            values = {
+                "project_id": decision.project_id,
+                "task_id": decision.task_id,
+                "authority": decision.authority.value,
+                "status": decision.status.value,
+                "payload": decision.model_dump(mode="json"),
+                "created_at": decision.created_at,
+                "resolved_at": decision.resolved_at,
+            }
+            if row is None:
+                session.add(DecisionRow(decision_id=decision.decision_id, **values))
+            else:
+                for key, value in values.items():
+                    setattr(row, key, value)
+
+    async def record_capability_score(self, score: CapabilityScoreRecord) -> None:
+        async with self.sessions.begin() as session:
+            session.add(
+                CapabilityScoreRow(
+                    score_id=score.score_id,
+                    deployment_id=score.deployment_id,
+                    capability=score.capability.value,
+                    score=score.score,
+                    sample_count=score.sample_count,
+                    uncertainty=score.uncertainty,
+                    source=score.source,
+                    observed_at=score.observed_at,
+                    payload=score.model_dump(mode="json"),
+                )
+            )
+
+    async def save_learning_candidate(self, candidate: LearningCandidate) -> None:
+        async with self.sessions.begin() as session:
+            row = await session.get(LearningCandidateRow, candidate.candidate_id)
+            values = {
+                "project_id": candidate.project_id,
+                "lesson_type": candidate.lesson_type,
+                "status": candidate.status.value,
+                "payload": candidate.model_dump(mode="json"),
+                "created_at": candidate.created_at,
+                "updated_at": candidate.updated_at,
+            }
+            if row is None:
+                session.add(LearningCandidateRow(candidate_id=candidate.candidate_id, **values))
+            else:
+                for key, value in values.items():
+                    setattr(row, key, value)
 
     async def upsert_deployment(self, deployment: InferenceDeployment) -> None:
         async with self.sessions.begin() as session:
@@ -178,6 +273,31 @@ class AssuranceRepository:
                 retry_times.append(retry_at)
         return min(retry_times) if retry_times else None
 
+    async def append_event(
+        self,
+        event_type: str,
+        *,
+        project_id: str | None = None,
+        task_id: str | None = None,
+        payload: dict[str, object] | None = None,
+        idempotency_key: str | None = None,
+    ) -> str:
+        async with self.sessions.begin() as session:
+            if idempotency_key:
+                stmt = select(EventRow).where(EventRow.idempotency_key == idempotency_key)
+                existing = (await session.execute(stmt)).scalar_one_or_none()
+                if existing:
+                    return existing.event_id
+            event = self._event(
+                event_type,
+                project_id=project_id,
+                task_id=task_id,
+                payload=payload,
+                idempotency_key=idempotency_key,
+            )
+            session.add(event)
+            return event.event_id
+
     async def list_events(self) -> list[dict[str, object]]:
         async with self.sessions() as session:
             rows = (await session.execute(select(EventRow).order_by(EventRow.created_at))).scalars().all()
@@ -199,6 +319,7 @@ class AssuranceRepository:
         project_id: str | None = None,
         task_id: str | None = None,
         payload: dict[str, object] | None = None,
+        idempotency_key: str | None = None,
     ) -> EventRow:
         return EventRow(
             event_id=str(uuid4()),
@@ -206,6 +327,7 @@ class AssuranceRepository:
             project_id=project_id,
             task_id=task_id,
             payload=payload or {},
+            idempotency_key=idempotency_key,
         )
 
     @staticmethod
