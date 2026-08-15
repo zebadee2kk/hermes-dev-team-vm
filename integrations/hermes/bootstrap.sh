@@ -111,6 +111,14 @@ hermes config set kanban.dispatch_in_gateway "$KANBAN_DISPATCH" >/dev/null
 hermes config set kanban.orchestrator_profile "$KANBAN_ORCHESTRATOR" >/dev/null
 hermes config set kanban.default_assignee "$KANBAN_DEFAULT_ASSIGNEE" >/dev/null
 
+if [[ "${FORGE_ENABLE_KNOWLEDGE_CRON:-false}" == "true" ]]; then
+  FORGE_REPO_ROOT="$ROOT_DIR" \
+  FORGE_KNOWLEDGE_ROOT="$FORGE_KNOWLEDGE_ROOT" \
+    bash "$ROOT_DIR/integrations/hermes/configure-knowledge-cron.sh"
+else
+  echo "Knowledge cron remains disabled. Set FORGE_ENABLE_KNOWLEDGE_CRON=true during bootstrap to create the supported Hermes maintenance/radar jobs."
+fi
+
 echo "Hermes Forge lanes configured from $LANE_MANIFEST. Export FORGE_GATEWAY_KEY in the Hermes gateway service environment before starting the gateway."
 echo "Compiled knowledge exposed read-only from $FORGE_KNOWLEDGE_ROOT through forge-assurance MCP."
 echo "Next: hermes gateway restart && hermes kanban init"
