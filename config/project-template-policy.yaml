@@ -1,0 +1,19 @@
+required_project_files:
+  - AGENTS.md
+  - ARCHITECTURE.md
+  - SECURITY.md
+  - QUALITY.md
+
+bootstrap_rules:
+  replace_placeholders_before_first_build_task: true
+  protected_acceptance_after_owner_or_product_baseline: true
+  structural_checks_preferred_for_critical_architecture_rules: true
+  secret_files_never_generated_with_real_credentials: true
+
+maintenance_tasks:
+  documentation_gardening: true
+  dependency_health: true
+  architecture_drift: true
+  security_drift: true
+  test_quality: true
+  dead_code_and_technical_debt: true

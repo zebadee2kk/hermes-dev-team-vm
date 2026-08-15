@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes-forge.local/schemas/inference-deployment.schema.json",
+  "title": "Forge Inference Deployment",
+  "type": "object",
+  "required": ["deployment_id", "provider", "model", "tier", "endpoint", "enabled", "privacy_class", "cost_class", "state"],
+  "properties": {
+    "deployment_id": {"type": "string"},
+    "provider": {"type": "string"},
+    "model": {"type": "string"},
+    "account_ref": {"type": ["string", "null"]},
+    "tier": {"type": "string"},
+    "endpoint": {"type": "string"},
+    "credential_binding": {"type": ["string", "null"]},
+    "enabled": {"type": "boolean"},
+    "privacy_class": {"enum": ["public_only", "internal_allowed", "confidential_allowed", "restricted_allowed"]},
+    "cost_class": {"enum": ["free_api", "free_credit", "local", "paid", "unknown"]},
+    "state": {"enum": ["AVAILABLE", "THROTTLED_SHORT", "QUOTA_EXHAUSTED", "CREDIT_EXHAUSTED", "PROVIDER_DEGRADED", "OFFLINE", "AUTH_FAILED", "POLICY_BLOCKED", "QUARANTINED"]},
+    "retry_at": {"type": ["string", "null"], "format": "date-time"},
+    "capabilities": {"type": "object"},
+    "context_tokens": {"type": ["integer", "null"], "minimum": 1},
+    "development_only": {"type": "boolean", "default": false},
+    "terms_evidence_ref": {"type": ["string", "null"]},
+    "last_verified_at": {"type": ["string", "null"], "format": "date-time"},
+    "metadata": {"type": "object"}
+  },
+  "additionalProperties": true
+}

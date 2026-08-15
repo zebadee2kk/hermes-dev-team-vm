@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes-forge.local/schemas/worker-result.schema.json",
+  "title": "Forge Structured Worker Result",
+  "type": "object",
+  "required": ["task_id", "capsule_revision", "status", "changed_artifacts", "verification", "residual_risk"],
+  "properties": {
+    "task_id": {"type": "string"},
+    "capsule_revision": {"type": "integer", "minimum": 1},
+    "status": {"enum": ["complete", "partial", "blocked", "failed", "waiting_compute"]},
+    "changed_artifacts": {"type": "array", "items": {"type": "object"}},
+    "actions": {"type": "array", "items": {"type": "object"}},
+    "verification": {"type": "array", "items": {"type": "object"}},
+    "anchor_refs": {"type": "array", "items": {"type": "string"}},
+    "trust_envelope_refs": {"type": "array", "items": {"type": "string"}},
+    "proposed_graph_updates": {"type": "array", "items": {"type": "object"}},
+    "open_questions": {"type": "array", "items": {"type": "string"}},
+    "block_reason": {"type": ["object", "null"]},
+    "residual_risk": {"type": "array", "items": {"type": "string"}},
+    "usage": {"type": "object"}
+  },
+  "additionalProperties": true
+}

@@ -1,42 +1,54 @@
-# Deployment profiles
+# Deployment profiles — Revision 2
 
-The application architecture is portable; deployment profiles change trust, resources and network policy.
+The application architecture is portable; profiles change resource ceilings, sandbox strength, ingress, data routing and recovery policy. All profiles preserve Brain / Session / Hands separation.
 
 ## Local trusted / Proxmox
 
-Preferred full-capability profile. Local Ollama may service routine tasks. The VM still denies arbitrary LAN access by default because project workers are untrusted.
+Preferred full-capability engineering profile. Local Ollama may handle routine work. Normal autonomous arbitrary-code Hands still use gVisor where supported because trusted infrastructure does not make generated/package code trustworthy.
 
-Suggested starting allocation: 4 vCPU, 12–16 GB RAM, 80+ GB disk; scale workers independently based on build workload.
+Starting point: 4 vCPU, 12–16 GB RAM, 80+ GB disk. Increase resources based on concurrent builds rather than model inference, which is normally remote.
 
-## OCI Always Free
+## OCI Always Free / low-cost ARM
 
-Current Oracle documentation describes the Always Free Ampere A1 allowance as 1,500 OCPU-hours and 9,000 GB-hours monthly, equivalent for an Always Free tenancy to **2 OCPUs and 12 GB RAM total**, plus Always Free block-storage allocation. The instance is ARM.
+Treat the host as disposable. Current resource assumptions remain profile metadata and must be revalidated at deployment time.
 
-Design implications:
-
-- multi-arch images only;
-- one heavy worker at a time by default;
-- no useful local LLM expectation;
-- PostgreSQL/Redis/LiteLLM/controller/Hermes must be resource-conscious;
-- keep source/state recoverable because Oracle documents reclamation of idle Always Free compute under its policy.
-
-Always validate the current OCI terms/limits at deployment time.
+Design rules:
+- arm64 multi-arch images;
+- gVisor/runtime support validated on the chosen kernel/image;
+- one heavy Hand by default;
+- no dependency on local LLM inference;
+- resource-conscious Hermes/PostgreSQL/Redis/LiteLLM/Forge;
+- persistent state backed up/replicated so host reclamation does not lose project progress;
+- automated rebuild using Terraform/Ansible plus encrypted state restore.
 
 ## Portable laptop VM
 
-Same logical topology, smaller concurrency. Local models may be enabled when host resources support them.
+Same logical topology with smaller concurrency. Local models are optional. LAN access stays deny-by-default for Hands even when the VM runs on a trusted home/client network.
 
 ## Cloud isolated
 
-No LAN trust. Public ingress denied except explicitly mediated owner UI/tunnel. Workers receive proxy-only outbound network.
+Strict control plane; no implicit LAN trust. Public ingress is denied except a deliberately mediated owner interface/tunnel. All Hand egress is through the capability/network gateway.
 
 ## Client safe
 
-Free/public providers are restricted to PUBLIC data unless provider terms and client policy explicitly permit more. Prefer local/approved enterprise inference for confidential work. Worker privilege may be reduced.
+Use a restrictive data-routing profile, approved inference deployments only, stronger isolation where client policy requires it, and explicit connector/repository scopes. Public/free inference remains PUBLIC-only unless the exact deployment terms and client policy allow more.
+
+## Recovery objective
+
+The VM is not the system of record. A replacement host must be reconstructable from:
+1. Git/release/IaC;
+2. encrypted PostgreSQL/Forge state backup;
+3. Hermes/Kanban/session backup as required by upstream storage layout;
+4. append-only event replication/checkpoint;
+5. secrets restored separately from a trusted vault/broker.
+
+M8 is not complete until a checkpointed project resumes on a rebuilt host.
 
 ## Portability requirements
 
-- arm64 + amd64 controller images
-- configuration through environment/profile files
-- no cloud-specific assumptions in domain code
-- backup/restore scripts tested independently of VM provider
+- amd64 + arm64 controller images;
+- no cloud-specific assumptions in domain code;
+- sandbox runtime selected by profile/capability detection;
+- configuration from versioned non-secret policy + external secrets;
+- backup/restore tested independently of VM provider;
+- workers/Hermes must tolerate runtime concurrency being reduced to one.

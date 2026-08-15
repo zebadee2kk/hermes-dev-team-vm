@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes-forge.local/schemas/capability-grant.schema.json",
+  "title": "Forge Capability Grant",
+  "type": "object",
+  "required": ["grant_id", "subject", "service", "operations", "resource_scope", "issued_at", "expires_at"],
+  "properties": {
+    "grant_id": {"type": "string"},
+    "subject": {"type": "object", "required": ["project_id", "task_id"], "properties": {"project_id": {"type": "string"}, "task_id": {"type": "string"}, "hand_id": {"type": ["string", "null"]}}},
+    "service": {"type": "string"},
+    "destination": {"type": ["string", "null"]},
+    "operations": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "resource_scope": {"type": "object"},
+    "credential_binding": {"type": ["string", "null"]},
+    "data_classes": {"type": "array", "items": {"enum": ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"]}},
+    "issued_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "max_uses": {"type": ["integer", "null"], "minimum": 1},
+    "owner_decision_ref": {"type": ["string", "null"]},
+    "audit_required": {"type": "boolean", "default": true}
+  },
+  "additionalProperties": false
+}

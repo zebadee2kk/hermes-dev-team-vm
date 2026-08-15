@@ -3,46 +3,60 @@ profiles:
     target: proxmox_or_local_vm
     architecture: amd64
     control_plane_hardening: standard
-    worker_privilege: root_in_sandbox
+    sandbox_profile: normal
     local_models: true
-    lan_access: deny_by_default
+    lan_access: deny_for_hands_by_default
     max_concurrent_workers: 4
+    recovery: encrypted_state_backup
 
   cloud-isolated:
     target: generic_vps_or_oci
     architecture: arm64_or_amd64
     control_plane_hardening: strict
-    worker_privilege: root_in_sandbox
+    sandbox_profile: normal
     local_models: false
     lan_access: none
     public_ingress: deny_by_default
     max_concurrent_workers: 2
+    recovery: encrypted_state_backup_plus_offhost_events
 
   oci-always-free:
     target: oci_ampere_a1
     architecture: arm64
     control_plane_hardening: strict
-    worker_privilege: root_in_sandbox
+    sandbox_profile: normal
+    require_gvisor_runtime_validation: true
     local_models: false
     max_concurrent_workers: 1
     resource_assumption:
       ocpu: 2
       memory_gb: 12
-    note: "Current OCI Always Free allowance; validate again at deployment time. Design for instance reclamation/rebuild."
+    host_disposable: true
+    recovery: automated_rebuild_and_restore
+    note: "Validate current OCI free-tier terms/resources and gVisor/kernel compatibility at deployment time."
 
   portable:
     target: laptop_vm
     architecture: amd64_or_arm64
     control_plane_hardening: standard
-    worker_privilege: root_in_sandbox
+    sandbox_profile: normal
     local_models: optional
     max_concurrent_workers: 2
+    lan_access: deny_for_hands_by_default
+    recovery: encrypted_state_backup
 
   client-safe:
     target: client_environment
     architecture: amd64_or_arm64
     control_plane_hardening: strict
-    worker_privilege: constrained
+    sandbox_profile: high
     local_models: preferred
-    public_free_models: public_data_only
+    public_free_models: public_data_only_unless_exact_deployment_approved
     max_concurrent_workers: 2
+    recovery: client_approved
+
+invariants:
+  brain_session_hands_separated: true
+  docker_socket_in_hands: false
+  capability_gateway_for_sensitive_egress: true
+  secrets_external_to_repository: true
