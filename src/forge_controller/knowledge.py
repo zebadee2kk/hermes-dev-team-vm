@@ -105,7 +105,12 @@ def assess_candidate_signal(signals: CandidateSignalInput) -> CandidateSignalAss
         score -= 15
         reasons.append("-15 no concrete artifact")
     score = max(0, min(100, score))
-    tier = SignalTier.TEST if score >= 70 else SignalTier.WATCH if score >= 40 else SignalTier.IGNORE
+    if score >= 70:
+        tier = SignalTier.TEST
+    elif score >= 40:
+        tier = SignalTier.WATCH
+    else:
+        tier = SignalTier.IGNORE
     return CandidateSignalAssessment(score=score, tier=tier, reasons=reasons)
 
 
@@ -181,7 +186,7 @@ class TechnologyCandidate(BaseModel):
     problem: str
     proposed_value: str
     evidence_refs: list[str] = Field(min_length=1)
-    signal_assessment: CandidateSignalAssessment | None = None
+    signal_assessment: CandidateSignalAssessment
     replacement_scope: list[str] = Field(default_factory=list)
     integration_seam: str
     test_plan: list[str] = Field(min_length=1)
@@ -216,7 +221,7 @@ def evaluate_promotion(
     reasons: list[str] = []
     if candidate.status != CandidateStatus.PROBATION:
         reasons.append("candidate is not in probation")
-    if candidate.signal_assessment and candidate.signal_assessment.tier != SignalTier.TEST:
+    if candidate.signal_assessment.tier != SignalTier.TEST:
         reasons.append("candidate did not pass high-signal intake triage")
     if candidate.probation_started_at is None:
         reasons.append("probation start is not recorded")
@@ -395,13 +400,45 @@ class KnowledgeStore:
         )
 
     def save_candidate(self, candidate: TechnologyCandidate) -> Path:
-        path = self.candidates_dir / f"{candidate.candidate_id}.yaml"
-        path.write_text(yaml.safe_dump(candidate.model_dump(mode="json"), sort_keys=True))
-        return path
+        if candidate.status == CandidateStatus.PROMOTED:
+            raise KnowledgeError("promoted candidates must use promote_candidate")
+        return self._write_candidate(candidate)
+
+    def promote_candidate(
+        self,
+        candidate: TechnologyCandidate,
+        evaluations: Iterable[CandidateEvaluation],
+        *,
+        policy: PromotionPolicy | None = None,
+        now: datetime | None = None,
+    ) -> TechnologyCandidate:
+        effective_now = now or datetime.now(UTC)
+        evaluation_list = list(evaluations)
+        decision = evaluate_promotion(
+            candidate,
+            evaluation_list,
+            policy=policy,
+            now=effective_now,
+        )
+        if not decision.eligible:
+            raise KnowledgeError("candidate promotion blocked: " + "; ".join(decision.reasons))
+        promoted = candidate.model_copy(
+            update={
+                "status": CandidateStatus.PROMOTED,
+                "promoted_at": effective_now,
+            }
+        )
+        self._write_candidate(promoted)
+        return promoted
 
     def save_evaluation(self, evaluation: CandidateEvaluation) -> Path:
         path = self.evals_dir / f"{evaluation.evaluation_id}.yaml"
         path.write_text(yaml.safe_dump(evaluation.model_dump(mode="json"), sort_keys=True))
+        return path
+
+    def _write_candidate(self, candidate: TechnologyCandidate) -> Path:
+        path = self.candidates_dir / f"{candidate.candidate_id}.yaml"
+        path.write_text(yaml.safe_dump(candidate.model_dump(mode="json"), sort_keys=True))
         return path
 
     def _page_paths(self) -> list[Path]:
