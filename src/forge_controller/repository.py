@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .assurance import (
@@ -40,6 +41,10 @@ from .persistence import (
 )
 
 
+class CapsuleRevisionConflict(RuntimeError):
+    pass
+
+
 class AssuranceRepository:
     def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
         self.sessions = sessions
@@ -50,27 +55,55 @@ class AssuranceRepository:
                 session.add(ProjectRow(project_id=project_id, name=name))
 
     async def save_capsule(self, capsule: TaskCapsule) -> None:
-        async with self.sessions.begin() as session:
-            session.add(
-                TaskCapsuleRow(
-                    capsule_id=capsule.capsule_id,
-                    project_id=capsule.project_id,
-                    task_id=capsule.task_id,
-                    kanban_task_id=(
-                        str(capsule.kanban_task_id) if capsule.kanban_task_id is not None else None
-                    ),
-                    revision=capsule.revision,
-                    payload=capsule.model_dump(mode="json"),
+        payload = capsule.model_dump(mode="json")
+        try:
+            async with self.sessions.begin() as session:
+                stmt = (
+                    select(TaskCapsuleRow)
+                    .where(TaskCapsuleRow.task_id == capsule.task_id)
+                    .order_by(TaskCapsuleRow.revision.desc())
+                    .limit(1)
                 )
-            )
-            session.add(
-                self._event(
-                    "capsule.checkpointed",
-                    project_id=capsule.project_id,
-                    task_id=capsule.task_id,
-                    payload={"capsule_id": capsule.capsule_id, "revision": capsule.revision},
+                latest = (await session.execute(stmt)).scalar_one_or_none()
+                if latest is None and capsule.revision != 1:
+                    raise CapsuleRevisionConflict("first Task Capsule revision must be 1")
+                if latest is not None:
+                    if capsule.revision == latest.revision:
+                        if latest.capsule_id == capsule.capsule_id and latest.payload == payload:
+                            return
+                        raise CapsuleRevisionConflict(
+                            f"revision {capsule.revision} already exists for task {capsule.task_id}"
+                        )
+                    if capsule.revision != latest.revision + 1:
+                        raise CapsuleRevisionConflict(
+                            f"expected revision {latest.revision + 1}, got {capsule.revision}"
+                        )
+                session.add(
+                    TaskCapsuleRow(
+                        capsule_id=capsule.capsule_id,
+                        project_id=capsule.project_id,
+                        task_id=capsule.task_id,
+                        kanban_task_id=(
+                            str(capsule.kanban_task_id)
+                            if capsule.kanban_task_id is not None
+                            else None
+                        ),
+                        revision=capsule.revision,
+                        payload=payload,
+                    )
                 )
-            )
+                session.add(
+                    self._event(
+                        "capsule.checkpointed",
+                        project_id=capsule.project_id,
+                        task_id=capsule.task_id,
+                        payload={"capsule_id": capsule.capsule_id, "revision": capsule.revision},
+                    )
+                )
+        except IntegrityError as exc:
+            raise CapsuleRevisionConflict(
+                f"concurrent Task Capsule revision conflict for task {capsule.task_id}"
+            ) from exc
 
     async def latest_capsule(self, task_id: str) -> TaskCapsule | None:
         async with self.sessions() as session:

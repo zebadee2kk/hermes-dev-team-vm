@@ -11,6 +11,20 @@ permissions:
 jobs:
   python:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: forge
+          POSTGRES_USER: forge
+          POSTGRES_PASSWORD: forge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forge -d forge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,5 +32,9 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -e '.[dev]'
+      - name: Validate PostgreSQL migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://forge:forge@localhost:5432/forge
       - run: ruff check .
       - run: pytest -q

@@ -47,35 +47,20 @@ When an inference deployment reaches quota, the persistent agent/task survives. 
 | Code truth | Git/GitHub |
 | Verification truth | executable reality anchors / CI |
 
-## Process shape
+## Quick start
 
-```text
-Owner
-  |
-Decision adapter + notifications
-  |
-Hermes orchestrator
-  |
-Hermes Kanban execution DAG
-  |        |          |
-profiles  Skills   worker lanes
-  \        |          /
-        Task Capsule
-             |
-      Execution Gateway
-             |
-     disposable Hands
-      (gVisor default)
-             |
-       code/test/browser
-
-Forge assurance plane, orthogonal to execution:
-- semantic/evidence/governance/capability graphs
-- quota intelligence + compute broker
-- content trust + capability/secret gateways
-- evaluation + learning quarantine
-- policy + audit + observability
+```bash
+cp .env.example .env
+python -m venv .venv
+. .venv/bin/activate
+pip install -e '.[dev]'
+alembic upgrade head
+pytest
+ruff check .
+uvicorn forge_controller.api:app --env-file .env --reload
 ```
+
+The controller API is now persistence-backed for Task Capsules, Reality Anchors, trust envelopes, Inference Deployments, quota observations and routing. Hermes task lifecycle remains intentionally outside the Forge API.
 
 ## Repository map
 
@@ -86,22 +71,8 @@ Forge assurance plane, orthogonal to execution:
 - `src/forge_controller/` — executable assurance/control primitives.
 - `tests/` — deterministic tests; expand with adversarial and structural tests.
 - `BACKLOG.md` — Revision 2 implementation sequence and gates.
-- `AGENTS.md` — normative contract for any coding agent working on this repository.
+- `AGENTS.md` — normative contract for any coding agent working in this repository.
 
 ## V1 anti-goals
 
 Do not add LangGraph, CrewAI, AutoGen, Temporal, Kafka, Kubernetes or Neo4j unless an ADR demonstrates a measured limitation. Do not expose the Docker socket to workers. Do not automate account creation, rotate identities to bypass quotas, treat trial capacity as durable free compute, weaken tests to obtain a green result, or allow project agents to edit the Owner Charter/security policy.
-
-## Quick start
-
-```bash
-cp .env.example .env
-python -m venv .venv
-. .venv/bin/activate
-pip install -e '.[dev]'
-pytest
-ruff check .
-uvicorn forge_controller.api:app --reload
-```
-
-The current Python code remains a foundation; Revision 2 is primarily an architecture correction before M1 implementation.
