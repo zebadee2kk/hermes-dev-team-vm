@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .models import CostClass, ModelCandidate, ProviderState, RouteRequest
 
@@ -20,7 +20,7 @@ def select_candidate(
     candidates: list[ModelCandidate],
     now: datetime | None = None,
 ) -> ModelCandidate:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     eligible: list[tuple[float, ModelCandidate]] = []
 
     for candidate in candidates:

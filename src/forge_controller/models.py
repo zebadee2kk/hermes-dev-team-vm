@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -62,7 +62,7 @@ class QuotaObservation(BaseModel):
     status_code: int | None = None
     headers: dict[str, str] = Field(default_factory=dict)
     error_code: str | None = None
-    observed_at: datetime = Field(default_factory=datetime.utcnow)
+    observed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Availability(BaseModel):

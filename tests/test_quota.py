@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from forge_controller.models import ProviderState, QuotaObservation
 from forge_controller.quota import classify_observation, parse_delay
@@ -9,7 +9,7 @@ def test_parse_provider_duration() -> None:
 
 
 def test_groq_style_exhaustion_uses_reset() -> None:
-    now = datetime(2026, 8, 15, 10, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 15, 10, 0, tzinfo=UTC)
     result = classify_observation(
         QuotaObservation(
             provider="groq",

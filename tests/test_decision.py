@@ -3,16 +3,16 @@ from forge_controller.models import AuthorityLevel, DecisionRequest
 
 
 def decision(**overrides):
-    values = dict(
-        id="D1",
-        question="Use library A?",
-        recommendation="yes",
-        confidence=0.9,
-        materiality=0.1,
-        irreversibility=0.1,
-        consequence=0.1,
-        hard_gate=False,
-    )
+    values = {
+        "id": "D1",
+        "question": "Use library A?",
+        "recommendation": "yes",
+        "confidence": 0.9,
+        "materiality": 0.1,
+        "irreversibility": 0.1,
+        "consequence": 0.1,
+        "hard_gate": False,
+    }
     values.update(overrides)
     return DecisionRequest(**values)
 
