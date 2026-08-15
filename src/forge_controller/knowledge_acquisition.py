@@ -8,7 +8,6 @@ from uuid import NAMESPACE_URL, uuid4, uuid5
 
 import yaml
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 
 from .assurance import SemanticEdge, SemanticKind, SemanticNode
 from .contracts import TrustEnvelope
@@ -173,6 +172,8 @@ class TrustedKnowledgeAcquisition:
             raise KnowledgeError("acquisition project does not match Trust Envelope")
         if request.task_id and envelope.task_id and request.task_id != envelope.task_id:
             raise KnowledgeError("acquisition task does not match Trust Envelope")
+        if request.source_url and envelope.content_ref != request.source_url:
+            raise KnowledgeError("source URL does not match Trust Envelope content_ref")
         if request.shared_global_knowledge and envelope.data_sensitivity != Sensitivity.PUBLIC:
             raise KnowledgeError("shared global knowledge accepts PUBLIC content only")
 
