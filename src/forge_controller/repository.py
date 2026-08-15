@@ -185,6 +185,23 @@ class AssuranceRepository:
                 )
             )
 
+    async def trust_envelopes(self, envelope_ids: list[str]) -> list[TrustEnvelope]:
+        if not envelope_ids:
+            return []
+        if len(envelope_ids) != len(set(envelope_ids)):
+            raise ValueError("duplicate parent Trust Envelope id")
+        async with self.sessions() as session:
+            rows = (
+                await session.execute(
+                    select(TrustEnvelopeRow).where(TrustEnvelopeRow.envelope_id.in_(envelope_ids))
+                )
+            ).scalars().all()
+        by_id = {row.envelope_id: TrustEnvelope.model_validate(row.payload) for row in rows}
+        missing = [envelope_id for envelope_id in envelope_ids if envelope_id not in by_id]
+        if missing:
+            raise KeyError("unknown Trust Envelope: " + ", ".join(missing))
+        return [by_id[envelope_id] for envelope_id in envelope_ids]
+
     async def save_decision(self, decision: DecisionRecord) -> None:
         async with self.sessions.begin() as session:
             row = await session.get(DecisionRow, decision.decision_id)
@@ -202,6 +219,11 @@ class AssuranceRepository:
             else:
                 for key, value in values.items():
                     setattr(row, key, value)
+
+    async def get_decision(self, decision_id: str) -> DecisionRecord | None:
+        async with self.sessions() as session:
+            row = await session.get(DecisionRow, decision_id)
+            return DecisionRecord.model_validate(row.payload) if row else None
 
     async def record_capability_score(self, score: CapabilityScoreRecord) -> None:
         async with self.sessions.begin() as session:
