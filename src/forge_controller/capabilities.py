@@ -46,7 +46,7 @@ class CapabilityPolicy(BaseModel):
     templates: dict[str, CapabilityTemplate]
 
     @classmethod
-    def load(cls, path: str | Path) -> "CapabilityPolicy":
+    def load(cls, path: str | Path) -> CapabilityPolicy:
         source = Path(path)
         raw = yaml.safe_load(source.read_text())
         if not isinstance(raw, dict):
@@ -245,9 +245,12 @@ def authorize(
 
     if use.operation == "branch.push" and use.force and not selected.allow_force_push:
         raise CapabilityDenied("force push is forbidden")
-    if use.operation == "pr.create" and selected.pr_base_must_equal_default:
-        if not use.base_branch or use.base_branch != use.default_branch:
-            raise CapabilityDenied("pull request base must be the repository default branch")
+    if (
+        use.operation == "pr.create"
+        and selected.pr_base_must_equal_default
+        and (not use.base_branch or use.base_branch != use.default_branch)
+    ):
+        raise CapabilityDenied("pull request base must be the repository default branch")
 
     return AuthorizedCapability(
         grant_id=grant.grant_id,
@@ -279,8 +282,7 @@ def _validate_branch(value: str) -> None:
         or ".." in value
         or "//" in value
         or "@{" in value
-        or value.endswith(".lock")
-        or value.endswith("/")
+        or value.endswith((".lock", "/"))
         or value.startswith("-")
     ):
         raise ValueError("invalid or ambiguous Git branch name")
