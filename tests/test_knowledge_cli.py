@@ -1,9 +1,13 @@
+import asyncio
 import json
 from pathlib import Path
 
 import yaml
 
+from forge_controller.contracts import RealityAnchor
 from forge_controller.knowledge_cli import main
+from forge_controller.persistence import create_schema, make_engine, make_session_factory
+from forge_controller.repository import AssuranceRepository
 
 
 def test_signal_cli_scores_reproducible_primary_artifact(tmp_path, capsys) -> None:
@@ -46,10 +50,30 @@ def test_ingest_cli_creates_content_addressed_source_manifest(tmp_path, capsys) 
     assert (root / "raw/_manifest/source-1.yaml").exists()
 
 
+async def _seed_promotion_anchors(database_url: str) -> None:
+    engine = make_engine(database_url)
+    await create_schema(engine)
+    repository = AssuranceRepository(make_session_factory(engine))
+    await repository.create_project("forge", "Forge")
+    for index in (1, 2):
+        await repository.record_anchor(
+            RealityAnchor(
+                anchor_id=f"RA-{index}",
+                project_id="forge",
+                task_id=f"T{index}",
+                type="test",
+                claim_ref=f"candidate:candidate-1:E{index}",
+                result={"passed": True},
+            )
+        )
+    await engine.dispose()
+
+
 def test_promote_cli_uses_controlled_promotion_gate(tmp_path, capsys) -> None:
     root = tmp_path / "knowledge"
     candidate_path = tmp_path / "candidate.yaml"
     eval_dir = tmp_path / "evals"
+    database_url = f"sqlite+aiosqlite:///{tmp_path / 'forge.db'}"
     eval_dir.mkdir()
     candidate_path.write_text(
         yaml.safe_dump(
@@ -88,6 +112,7 @@ def test_promote_cli_uses_controlled_promotion_gate(tmp_path, capsys) -> None:
             )
         )
 
+    asyncio.run(_seed_promotion_anchors(database_url))
     result = main(
         [
             "--root",
@@ -99,6 +124,10 @@ def test_promote_cli_uses_controlled_promotion_gate(tmp_path, capsys) -> None:
             str(eval_dir),
             "--min-probation-days",
             "0",
+            "--project-id",
+            "forge",
+            "--database-url",
+            database_url,
         ]
     )
     assert result == 0
