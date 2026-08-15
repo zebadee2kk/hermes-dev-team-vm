@@ -1,0 +1,37 @@
+# Stable organisational lanes. Specialisation should normally be added with task-scoped Skills.
+lanes:
+  forge-orchestrator:
+    durable: true
+    responsibilities: [decompose, coordinate, synthesize, escalate]
+  research:
+    durable: true
+    responsibilities: [research, evidence_collection]
+  product:
+    durable: true
+    responsibilities: [requirements, acceptance, user_value]
+  architecture:
+    durable: true
+    responsibilities: [architecture, interfaces, tradeoffs]
+  engineering:
+    durable: true
+    responsibilities: [implementation, debugging, integration]
+  security:
+    durable: true
+    responsibilities: [threat_model, security_review]
+  qa-review:
+    durable: true
+    responsibilities: [test, independent_review, verification]
+  documentation-release:
+    durable: true
+    responsibilities: [docs, packaging, handover, release_prep]
+
+external_runtime_adapters:
+  codex: disabled
+  claude_code: disabled
+  opencode: disabled
+  gemini_cli: disabled
+
+rules:
+  prefer_task_skills_over_new_persistent_profiles: true
+  external_runtime_is_not_project_manager: true
+  require_task_capsule_for_handoff: true

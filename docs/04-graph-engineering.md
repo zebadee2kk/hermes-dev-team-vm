@@ -1,73 +1,70 @@
-# Graph engineering model
+# Graph engineering model — Revision 2
 
-The design follows the principle that useful autonomous engineering is not one giant reasoning loop. Loops remain local execution mechanics; the overall organisation is a dynamic graph of dependencies, evidence, people/agents and decisions.
+Graph engineering is not a reason to duplicate Hermes' workflow graph. Hermes Kanban is the execution DAG. Forge maintains orthogonal graphs that explain what the work means, what evidence supports it, what authority applies and what compute is suitable.
 
-## Six graph views
+## 1. Execution graph — Hermes owned
 
-### 1. Execution graph
-Nodes are work. Edges encode dependencies, review gates and repair cycles.
+Nodes are durable Kanban tasks; links express dependencies, decomposition, review/repair and human blocking. Forge correlates to these tasks but never becomes a competing task state machine.
 
-Example:
+## 2. Semantic project graph — Forge owned
 
-`idea -> research -> requirements -> architecture -> build -> verify -> release`
-
-Parallel branches are first-class. A failed verification node creates/activates repair nodes rather than recursively prompting forever.
-
-### 2. Project knowledge graph
-Relationships between requirements, decisions, components, files, tests, risks and documentation.
+Relates ideas, requirements, decisions, components, interfaces, files, tests, risks and documentation.
 
 Example:
+`Requirement R17 -> IMPLEMENTED_BY -> Component C4 -> IMPLEMENTED_IN -> commit abc -> VERIFIED_BY -> Anchor A27`
 
-`Requirement R17 -> IMPLEMENTED_BY -> Component C4 -> VERIFIED_BY -> Test T27`
+## 3. Evidence/trace graph — Forge owned
 
-### 3. Organisation graph
-Maps work types to persistent role identities and dynamically instantiated teams. Roles are stable; model deployments are replaceable.
+Connects claims and actions to provenance:
+`task -> lane -> inference deployment -> tool/action -> source -> artefact -> anchor -> review -> decision`.
 
-### 4. Model capability graph
-Stores empirical capability, reliability, latency, cost class, quota state and data-policy compatibility for each deployment.
+### Reality anchors
+A graph can self-confirm bad conclusions; therefore material claims must terminate in independent observations. Anchors include executed tests/CI, actual HTTP/browser behaviour, measurements, scans, authoritative external evidence and explicit owner decisions. Model agreement is not sufficient where mechanical verification is available.
 
-### 5. Governance graph
-Represents who/what may perform an action on a resource under a policy and whether owner authority is required.
+## 4. Governance graph — Forge owned
 
-### 6. Trace/evidence graph
-Connects task -> agent -> model deployment -> tool -> source -> code change -> test -> review -> decision. This supports real provenance instead of retrospective LLM explanations.
+Represents subject, action, resource, policy, capability and owner authority. Security controls are anchored outside the optimisation loop by `OWNER_CHARTER.md` and protected policy/tests.
 
-## Typed edge vocabulary (initial)
+## 5. Compute capability graph — Forge owned
 
-- DEPENDS_ON
+Stores measured performance and availability for **Inference Deployments** and worker runtimes. Routing is based on actual deployment behaviour, not model brand alone.
+
+## Stable organisation + dynamic expertise
+
+Persistent role identities are intentionally few. Dynamic project teams are assembled by selecting lanes and attaching task Skills. This avoids persona explosion while retaining durable organisational identities.
+
+## Typed semantic/evidence edges — seed
+
 - DERIVED_FROM
-- IMPLEMENTS
-- IMPLEMENTED_BY
+- REQUIRES
+- IMPLEMENTS / IMPLEMENTED_BY
+- IMPLEMENTED_IN
 - VERIFIED_BY
+- CLAIMS
+- ANCHORED_BY
 - REVIEWS
 - SUPERSEDES
 - AFFECTS
 - EVIDENCED_BY
-- BLOCKED_BY
 - DECIDED_BY
 - PRODUCED_BY
-- ASSIGNED_TO
 - EXECUTED_WITH
+- INFLUENCED_BY
+- TAINTED_BY
 
-Add edge types conservatively; semantics belong in code/tests, not only prose.
+Hermes owns execution dependency links; do not mirror every Kanban dependency as a Forge edge unless it has semantic value.
 
-## Graph compilation
+## Impact/staleness analysis
 
-Input intent is classified, researched and expanded into candidate requirements. A graph compiler applies mandatory templates (security, review, verification, documentation) and project-specific nodes. The graph may evolve during delivery, but protected node classes cannot be deleted by ordinary workers.
+When a requirement/decision/interface changes:
+1. traverse semantic `AFFECTS/IMPLEMENTS/VERIFIED_BY` relationships;
+2. mark dependent claims/anchors/artefacts stale rather than deleting history;
+3. create or request required re-validation work through Hermes Kanban;
+4. preserve prior evidence as superseded historical provenance.
 
-## Impact analysis
+## Bounded local loops
 
-When a decision/requirement changes:
+Within a Kanban task a worker may run:
+`PLAN -> EXECUTE -> OBSERVE -> CRITIQUE -> VERIFY -> REPAIR`.
 
-1. traverse outbound AFFECTS/IMPLEMENTS/VERIFIED_BY relationships;
-2. mark affected artefacts stale;
-3. schedule re-analysis/re-test nodes;
-4. preserve the old decision/evidence as superseded history.
-
-## Local loop contract
-
-Every executable node may run a bounded loop:
-
-`PLAN -> EXECUTE -> OBSERVE -> CRITIQUE -> TEST -> REPAIR -> VERIFY`
-
-The loop has max attempts, elapsed time, repeated-failure detection and escalation. Its result is a graph update plus evidence, not merely a chat message.
+Each loop has budgets and a circuit breaker. Completion output is a Task Capsule update plus anchored evidence. The loop may not redefine its own acceptance criteria, Charter or mandatory security controls.

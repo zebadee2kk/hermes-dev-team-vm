@@ -1,55 +1,47 @@
-# Provider registry seed. Availability, models, limits and terms change frequently; adapters
-# must discover current state at runtime and persist observations rather than trusting this file.
+# Provider catalog seed only. Routing/privacy/quota apply to discovered Inference Deployments,
+# not to a provider brand globally. Runtime discovery persists account/tier/endpoint-specific truth.
 providers:
   openrouter:
     enabled: false
-    cost_class: free_api
-    privacy_class: public_only
+    discovery_adapter: openrouter
     quota_adapter: openrouter
-    notes: "Use :free/free-router capacity only unless paid emergency policy explicitly permits otherwise."
   groq:
     enabled: false
-    cost_class: free_api
-    privacy_class: public_only
+    discovery_adapter: groq
     quota_adapter: groq
   gemini:
     enabled: false
-    cost_class: free_api
-    privacy_class: public_only
+    discovery_adapter: gemini
     quota_adapter: gemini
   sambanova:
     enabled: false
-    cost_class: free_api
-    privacy_class: public_only
+    discovery_adapter: sambanova
     quota_adapter: sambanova
   mistral:
     enabled: false
-    cost_class: free_api
-    privacy_class: public_only
+    discovery_adapter: generic
     quota_adapter: generic
   nvidia_nim:
     enabled: false
-    cost_class: free_api
-    privacy_class: public_only
+    discovery_adapter: generic
     quota_adapter: generic
-    development_only: true
   cloudflare_workers_ai:
     enabled: false
-    cost_class: free_api
-    privacy_class: public_only
+    discovery_adapter: cloudflare
     quota_adapter: generic
   huggingface:
     enabled: false
-    cost_class: free_api
-    privacy_class: public_only
+    discovery_adapter: huggingface
     quota_adapter: generic
   ollama:
     enabled: false
-    cost_class: local
-    privacy_class: restricted_allowed
+    discovery_adapter: local
     quota_adapter: local
 
-policy_defaults:
-  unknown_provider_privacy_class: public_only
-  unknown_model_enabled: false
+inference_deployment_defaults:
+  enabled: false
+  privacy_class: public_only
+  cost_class: unknown
   promotional_capacity_is_durable: false
+  unknown_terms_block_non_public_data: true
+  probationary_until_smoke_tested: true

@@ -1,54 +1,62 @@
-# Threat model
+# Threat model — Revision 2
 
 ## Security objective
 
-Permit very high autonomy inside disposable engineering workers while preventing those workers, model providers, malicious dependencies or prompt-injected content from taking control of the outer system.
+Allow very high autonomy inside disposable engineering Hands while preventing workers, malicious dependencies, prompt-injected content, compromised external accounts or models from taking control of the Brain/Session plane, exfiltrating protected data or expanding their own authority.
 
 ## Trust zones
 
-### Zone A — owner
-Trusted human decisions and authenticated administration.
+- **Zone A — owner:** authenticated human authority and Charter changes.
+- **Zone B — Brain/Session:** Hermes, Forge, Kanban, policy, databases, model gateway, capability/secret gateway and audit.
+- **Zone C — Hands:** assume compromised; arbitrary generated/package/browser code may run with root inside its sandbox.
+- **Zone D — external systems/content:** providers, web, repositories, package metadata, MCP/connectors. Responses are data, never authority.
 
-### Zone B — control plane
-Hermes, Forge Controller, policy, graph state, scheduler, secret broker, LiteLLM and audit. Trusted code, least privilege, no arbitrary project code execution.
+## Mandatory controls
 
-### Zone C — worker sandboxes
-Assume compromised. May run arbitrary package scripts, generated code and browser content. Root inside the sandbox does not imply host privilege.
-
-### Zone D — external providers/Internet
-Untrusted. Responses are data, never authority.
-
-## Primary threats and controls
-
-| Threat | Control |
+| Threat | Required control |
 |---|---|
-| Prompt injection from web/repo/docs | tool/permission policy outside model context; treat retrieved instructions as untrusted data |
-| Malicious dependency post-install script | execute only in disposable worker; network mediation; no control-plane secrets |
-| Worker escapes container | non-root host daemon boundary, hardened runtime, resource/capability restrictions; evaluate microVMs before hostile multi-tenant use |
-| Secret exfiltration | secret broker/scoped credentials; scrub logs; no master keys in workers |
-| LAN/metadata access | proxy-only egress; RFC1918/loopback/link-local hard deny; cloud metadata deny |
-| Agent disables controls | controls run outside worker and are not writable by project credentials |
-| Runaway loop | max attempts/time, stagnation detection, task cancellation and budget limits |
-| Free-provider quota evasion | explicitly forbidden; one owned account/key pool per provider policy |
-| Silent paid fallback | paid route unavailable unless budget + authority policy explicitly enable it |
-| Unsafe production action | L3 gate for production deploy/public exposure/external communication/security-boundary changes |
-| Supply-chain contamination of control plane | control plane dependencies pinned/scanned separately from arbitrary project workers |
-| Audit destruction | append-only/event replication target in later milestone; worker has no DB admin credential |
+| Prompt injection from web/repo/docs/tool result | Content Trust Gateway; provenance/taint; permissions outside model context |
+| Multi-agent trust laundering | trust/taint propagated through handoffs; summaries do not upgrade trust |
+| Malicious package/post-install | disposable Hand; gVisor default; no Brain secrets |
+| Container escape | gVisor normal profile; stronger VM boundary for high risk; patched host |
+| Docker socket takeover | Docker socket never mounted into Hands |
+| Credential exfiltration | credentials injected by trusted gateway per scoped capability; workers do not receive broad/master secrets |
+| Allowed-domain exfiltration | operation/resource/identity-aware Capability Gateway; domain allowlist alone never authorises sensitive access |
+| LAN/metadata probing | hard network deny for RFC1918/loopback/link-local/metadata unless deployment policy explicitly permits |
+| Agent disables controls | policy/gateways outside Hand and unwritable by project credentials |
+| Runaway loop | bounded attempts/time/tokens, stagnation/circuit breaker, cancellation |
+| Reviewer collusion/correlated blind spot | adaptive independent review; high risk uses different deployment/provider where practical plus reality anchor |
+| Evaluation gaming | Owner Charter; protected acceptance criteria; prohibit weakening/removing tests to pass |
+| Persistent memory poisoning | learning quarantine + evaluation before trusted promotion |
+| Quota evasion | account creation/identity rotation/CAPTCHA or limit circumvention forbidden |
+| Silent paid fallback | no paid deployment eligible without budget policy and required authority |
+| Unsafe production/external action | L3 capability impossible without owner decision record |
+| Audit destruction | worker has no DB/admin capability; append-only events and later off-host replication |
+| Supply-chain compromise of Brain | Brain dependencies pinned/scanned and maintained separately from arbitrary project dependencies |
 
-## Prompt-injection rule
+## Sandbox levels
 
-An LLM may recommend that a domain, tool, permission or credential be added. It may not self-authorise that change. Automatic policy changes require deterministic machine-verifiable criteria already authorised by policy.
+- `LOW`: trusted/local low-risk tasks may use rootless container isolation.
+- `NORMAL`: gVisor (`runsc`) default for autonomous arbitrary project code on supported Linux.
+- `HIGH`: VM/microVM/stronger dedicated boundary for risky/untrusted workloads or client policy.
 
-## YOLO definition
+Root inside Zone C is acceptable only when it cannot affect the outer host/security plane.
 
-`YOLO` means broad engineering freedom **inside Zone C**: root, compilers, browsers, package managers and nested project services. It does not mean privileged access to Zones A/B, unrestricted network routing, secret stores or billing controls.
+## Prompt/content rule
 
-## Acceptance tests before autonomous production use
+An LLM may recommend adding a domain, tool, permission, model, credential or policy. It cannot approve the escalation. Automatic additions require deterministic criteria pre-authorised by policy and must not grant a broader capability than the evidence establishes.
 
-- worker cannot read control-plane environment/secrets
-- worker cannot reach RFC1918/LAN or cloud metadata unless an explicit profile permits it
-- prompt-injected webpage cannot add arbitrary egress domain
-- exhausted quota does not trigger account/key creation
-- paid inference cannot exceed policy
-- L3 actions cannot execute without an owner decision record
-- worker deletion/rebuild preserves project progress from Git + graph/checkpoint state
+## Acceptance tests before unattended use
+
+- Hand cannot read Brain/control-plane environment, DB credentials or model keys.
+- Hand cannot access Docker socket or equivalent host-control interface.
+- Hand cannot reach prohibited LAN/link-local/cloud metadata.
+- allowed destination cannot be abused with attacker-supplied credentials to exfiltrate protected content.
+- tainted web/tool content remains tainted after subagent summaries/handoffs.
+- prompt-injected content cannot authorise new capability/egress.
+- exhausted quota cannot trigger identity/account creation.
+- paid inference cannot exceed budget policy.
+- L3 action cannot execute without owner authority.
+- workers can be destroyed/rebuilt without losing durable task progress.
+- corrupt/replayed Task Capsule/event input is rejected or recovered safely.
+- attempts to weaken acceptance tests/security invariants are detected.

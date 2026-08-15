@@ -1,0 +1,39 @@
+# Seed policy. A capability grants a narrow operation; a destination alone grants nothing.
+defaults:
+  deny_unmatched: true
+  credential_injection: gateway_preferred
+  preserve_audit: true
+  max_ttl_minutes: 60
+
+network_hard_denies:
+  - 127.0.0.0/8
+  - 169.254.0.0/16
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+  - ::1/128
+  - fe80::/10
+
+capability_templates:
+  github_repo_read:
+    service: github
+    operations: [repo.read, issue.read, pr.read]
+    resource_scope_required: true
+  github_task_branch_write:
+    service: github
+    operations: [branch.push, pr.create, issue.comment]
+    resource_scope_required: true
+    branch_scope_required: true
+    credential_binding: trusted_gateway
+  package_registry_read:
+    service: package_registry
+    operations: [metadata.read, artifact.download]
+    credential_binding: none_or_gateway
+  provider_inference:
+    service: inference
+    operations: [model.invoke]
+    credential_binding: litellm
+  public_web_research:
+    service: web
+    operations: [http.get]
+    content_trust: untrusted_external

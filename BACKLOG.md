@@ -1,119 +1,125 @@
-# Delivery backlog
+# Delivery backlog — Design Revision 2
 
-The backlog is ordered to create a safe vertical slice early. Each milestone has an exit criterion.
+The backlog is ordered to reach a safe autonomous vertical slice early while avoiding duplicated Hermes orchestration.
 
-## M0 — Foundation (this commit)
+## M0 — Foundation + architecture correction
 
-- [x] Architecture and ADR baseline
-- [x] Policy/provider/deployment configuration contracts
-- [x] Typed quota/routing/decision primitives
-- [x] FastAPI control-service skeleton
-- [x] Unit tests + CI
-- [x] Docker Compose support services
+- [x] Initial control-service skeleton, tests and CI
+- [x] Design Revision 2 research review
+- [x] Hermes Kanban established as sole execution graph
+- [x] Brain / Session / Hands boundary
+- [x] Task Capsule + Reality Anchor contracts
+- [x] Content Trust + capability-egress design
+- [x] Inference Deployment routing unit
+- [x] stable lanes + dynamic Skills design
+- [x] Owner Charter + learning quarantine principles
 
-**Exit:** repo can be cloned, tests run, and the design is unambiguous enough for an implementation agent to continue.
+**Exit:** no major implementation milestone depends on the superseded dual-orchestrator design.
 
-## M1 — Persistent control plane
+## M1 — Durable assurance/session state
 
-- [ ] SQLAlchemy/asyncpg persistence for projects, nodes, edges, provider observations, decisions and events
-- [ ] Alembic migrations
-- [ ] Redis repository for short-lived leases/cooldowns
+- [ ] PostgreSQL models/migrations for Task Capsules, semantic nodes/edges, reality anchors, trust envelopes, decisions, inference deployments, quota observations, capability/outcome scores, learning candidates and events
+- [ ] Redis repository for cooldowns/leases/wake coordination
 - [ ] append-only audit/event service
-- [ ] idempotency keys on state-changing APIs
+- [ ] idempotency keys and optimistic/concurrency protection
+- [ ] recovery/replay tests
 
-**Exit:** restart the controller without losing project/quota/decision state.
+**Exit:** controller restart preserves assurance, quota, decision and handoff state without duplicating Hermes task lifecycle.
 
-## M2 — Quota Intelligence
+## M2 — Quota Intelligence + Inference Deployments
 
-- [ ] provider adapter interface
-- [ ] Groq header adapter
-- [ ] OpenRouter error/credit adapter
-- [ ] Gemini quota/backoff adapter
-- [ ] SambaNova adapter
-- [ ] generic OpenAI-compatible adapter
-- [ ] reset-time confidence and jitter
-- [ ] provider health probes
-- [ ] `WAITING_COMPUTE` scheduler
+- [ ] provider discovery/adapter interfaces
+- [ ] Groq, OpenRouter, Gemini, SambaNova adapters; generic OpenAI-compatible adapter
+- [ ] account/tier/endpoint-specific deployment registry
+- [ ] reset-time confidence, health probes and jitter
+- [ ] privacy/terms evidence per deployment
+- [ ] LiteLLM integration and virtual capability aliases
+- [ ] `WAITING_COMPUTE` block/wake contract with Hermes
 
-**Exit:** a simulated provider exhaustion test automatically routes to a second provider, then sleeps/resumes when all providers are unavailable.
+**Exit:** quota exhaustion swaps inference deployment using the same Task Capsule; all-compatible-compute exhaustion blocks then resumes safely.
 
-## M3 — Hermes integration
+## M3 — Hermes execution integration
 
-- [ ] install/configure Hermes on reference Ubuntu VM
-- [ ] LiteLLM endpoint profile
-- [ ] Forge MCP server exposing graph/routing/decision tools
-- [ ] Hermes profiles for orchestrator/research/architecture/engineering/review/security/docs
-- [ ] Kanban graph-to-task compiler
-- [ ] structured task completion metadata contract
-- [ ] block/resume mapping for human and compute waits
+- [ ] reference Hermes installation/config
+- [ ] stable lane/profile definitions from `config/worker-lanes.yaml`
+- [ ] task-scoped Skills convention/library
+- [ ] Task Capsule adapter for Kanban task start/handoff/completion
+- [ ] Forge MCP/API facade for assurance/routing/decision/trust services
+- [ ] structured result/anchor ingestion
+- [ ] human/compute block-unblock mapping
+- [ ] external runtime lane interface; implement at least one of Codex/Claude Code/OpenCode after Hermes-native lane works
 
-**Exit:** an idea entered into Hermes becomes a durable Kanban task graph and reaches a working prototype without manual task assignment.
+**Exit:** raw idea -> Hermes decomposition -> durable work -> Task Capsules -> autonomous implementation/verification without a Forge-owned parallel DAG.
 
-## M4 — Disposable worker sandbox
+## M4 — Sandbox Broker + capability gateway
 
 - [ ] sandbox manager abstraction
-- [ ] Docker root-capable worker prototype with non-root host boundary
-- [ ] per-project worktree mounts
-- [ ] CPU/RAM/PID/time limits
-- [ ] outbound proxy-only networking
-- [ ] secretless GitHub write path / scoped credential broker
+- [ ] gVisor normal worker prototype on x86_64 and ARM64 target paths
+- [ ] high-risk stronger isolation adapter design
+- [ ] per-task/worktree workspace lifecycle and resource limits
+- [ ] prove Docker socket is unavailable
+- [ ] hard network denies + destination proxy
+- [ ] capability gateway with GitHub task-branch scoped write path
+- [ ] secret broker / trusted credential injection
 - [ ] destroy/recreate/checkpoint tests
 
-**Exit:** deliberately compromise a worker and demonstrate it cannot read control-plane secrets or bypass egress policy.
+**Exit:** compromised Hand cannot access Brain secrets/host control/LAN metadata or use an approved service outside its granted operation/resource scope.
 
-## M5 — Human governance
+## M5 — Content Trust + governance UX
 
-- [ ] persistent decision queue
-- [ ] `YES / NO / DEFER / MORE INFO` transitions
-- [ ] Telegram delivery adapter
-- [ ] compact dashboard
-- [ ] decision batching/digest
-- [ ] L0/L1/L2/L3 policy tests
-- [ ] external communication / production / spend hard gates
+- [ ] trust-envelope ingestion for web/tool/repo/subagent outputs
+- [ ] taint propagation through transformations/handoffs
+- [ ] injection/suspicion hook interface
+- [ ] L0–L3 decision records and risk scoring
+- [ ] `YES / NO / DEFER / MORE INFO` adapter
+- [ ] deny-and-continue/repeated-denial circuit breaker
+- [ ] Telegram/mobile notification adapter and compact digest/dashboard
 
-**Exit:** owner can operate a project from four-choice mobile decisions only.
+**Exit:** owner operates material decisions with four choices; prompt-injected/tainted content cannot self-authorise capabilities.
 
-## M6 — Graph engineering
+## M6 — Semantic/evidence graph + reality anchors
 
-- [ ] project graph compiler
-- [ ] typed relationship vocabulary
-- [ ] impact analysis
-- [ ] dynamic node insertion
-- [ ] mandatory verification-node policy
-- [ ] evidence graph and provenance
-- [ ] retrospective learning updates
+- [ ] typed semantic/evidence vocabulary
+- [ ] claim/anchor persistence and freshness
+- [ ] impact/staleness traversal
+- [ ] request re-validation work through Hermes when anchors become stale
+- [ ] protected acceptance/security/Charter invariants
+- [ ] risk-adaptive independent review policy
 
-**Exit:** changing an architectural decision identifies affected requirements, code, tests and documentation and schedules re-validation.
+**Exit:** architecture/requirement change marks affected code/tests/docs/evidence stale and Hermes schedules only the necessary re-validation.
 
-## M7 — Capability learning
+## M7 — Evaluation, learning quarantine and gardening
 
-- [ ] canonical micro-benchmark suite
-- [ ] real-task outcome scoring
-- [ ] model capability graph persistence
-- [ ] routing weights learned from outcomes with conservative bounds
-- [ ] regression detection / quarantine
+- [ ] canonical micro-evals for initial priors
+- [ ] real-task anchored outcome scoring
+- [ ] deployment/runtime capability learning with uncertainty
+- [ ] regression detection/quarantine
+- [ ] candidate lesson quarantine + offline/cross-project promotion workflow
+- [ ] recurring documentation/dependency/architecture/security/test gardening tasks
 
-**Exit:** route selection demonstrably improves from observed project outcomes without bypassing policy.
+**Exit:** routing/Skills improve from measured outcomes without allowing learned state to weaken Charter/policy/security.
 
-## M8 — Deployment profiles
+## M8 — Deployment automation
 
-- [ ] Proxmox Terraform/Ansible implementation
-- [ ] OCI Always Free ARM implementation
-- [ ] portable local VM implementation
-- [ ] client-safe restricted profile
-- [ ] backup/rebuild drill
+- [ ] Proxmox/local Terraform + Ansible
+- [ ] OCI ARM profile with multi-arch/gVisor validation and disposable-state recovery
+- [ ] portable local VM
+- [ ] client-safe restricted/high-isolation profile
+- [ ] backup + off-host event/state restore drill
 
-**Exit:** same release can be rebuilt from scratch in at least two deployment profiles.
+**Exit:** same release rebuilds from scratch in at least two profiles and resumes a checkpointed project.
 
-## M9 — Adversarial acceptance
+## M9 — Adversarial autonomous acceptance
 
-- [ ] prompt-injection corpus
-- [ ] malicious dependency test
-- [ ] secret exfiltration tests
-- [ ] egress bypass tests
-- [ ] runaway-loop tests
-- [ ] quota storm tests
-- [ ] budget escape tests
-- [ ] corrupt graph/checkpoint recovery
+- [ ] prompt-injection and multi-agent trust-laundering corpus
+- [ ] malicious dependency/container-escape assumptions tests
+- [ ] Docker-socket/host-control negative tests
+- [ ] credential/approved-domain exfiltration tests
+- [ ] LAN/metadata/egress bypass tests
+- [ ] test/acceptance-weakening detection
+- [ ] runaway/repeated-denial/quota-storm/budget-escape tests
+- [ ] memory/learning poisoning tests
+- [ ] corrupt/replayed capsule/graph recovery
+- [ ] L3 capability bypass tests
 
-**Exit:** all mandatory controls pass and residual risks are documented before calling the system autonomous.
+**Exit:** mandatory controls and recovery drills pass with residual risks documented before unattended autonomous operation is declared ready.

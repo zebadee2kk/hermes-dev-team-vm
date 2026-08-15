@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes-forge.local/schemas/task-capsule.schema.json",
+  "title": "Forge Task Capsule",
+  "type": "object",
+  "required": ["task_id", "project_id", "objective", "acceptance", "attempt", "verification"],
+  "properties": {
+    "task_id": {"type": "string"},
+    "project_id": {"type": "string"},
+    "kanban_task_id": {"type": ["string", "integer", "null"]},
+    "objective": {"type": "string", "minLength": 1},
+    "acceptance": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "constraints": {"type": "object"},
+    "graph_refs": {"type": "array", "items": {"type": "string"}},
+    "workspace": {"type": "object"},
+    "attempt": {
+      "type": "object",
+      "required": ["number", "max_attempts"],
+      "properties": {
+        "number": {"type": "integer", "minimum": 1},
+        "max_attempts": {"type": "integer", "minimum": 1}
+      }
+    },
+    "previous_results": {"type": "array", "items": {"type": "object"}},
+    "verification": {
+      "type": "object",
+      "required": ["risk_level", "required_anchor_types"],
+      "properties": {
+        "risk_level": {"enum": ["low", "medium", "high", "production"]},
+        "required_anchor_types": {"type": "array", "items": {"type": "string"}},
+        "independent_review": {"type": "boolean"}
+      }
+    },
+    "capability_requirements": {"type": "array", "items": {"type": "string"}},
+    "open_questions": {"type": "array", "items": {"type": "string"}},
+    "artifacts": {"type": "array", "items": {"type": "object"}},
+    "residual_risk": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}

@@ -1,49 +1,25 @@
-version: 1
-mode: allowlist
-
-auto_trust:
-  # Auto-add only through deterministic trust chains, never because an LLM reports high confidence.
-  enabled: true
-  allowed_chains:
-    - package_registry_to_declared_source_repository
-    - official_docs_to_same_registered_domain
-  requires_https: true
-  deny_ip_literals: true
-
-baseline_domains:
-  source_control:
-    - github.com
-    - api.github.com
-    - raw.githubusercontent.com
-  python:
-    - pypi.org
-    - files.pythonhosted.org
-  node:
-    - npmjs.org
-    - registry.npmjs.org
-    - nodejs.org
-  containers:
-    - docker.io
-    - registry-1.docker.io
-    - ghcr.io
-  os:
-    - ubuntu.com
-    - archive.ubuntu.com
-    - security.ubuntu.com
+# Bootstrap destination registry — NOT an authorisation/trust list.
+# Sensitive operations require config/capability-policy.yaml and trusted credential injection.
+# Workers should normally reach these through the Capability Gateway rather than direct broad egress.
+destinations:
+  github:
+    domains: [github.com, api.github.com, raw.githubusercontent.com]
+    default_capability: none
+  python_packages:
+    domains: [pypi.org, files.pythonhosted.org]
+    default_capability: package_registry_read
+  npm_packages:
+    domains: [registry.npmjs.org]
+    default_capability: package_registry_read
+  container_registry:
+    domains: [registry-1.docker.io, auth.docker.io]
+    default_capability: package_registry_read
   documentation:
-    - developer.mozilla.org
-    - learn.microsoft.com
-    - docs.python.org
-  model_control:
-    - api.openrouter.ai
-    - openrouter.ai
-    - api.groq.com
-    - generativelanguage.googleapis.com
+    domains: [docs.python.org, developer.mozilla.org, learn.microsoft.com]
+    default_capability: public_web_research
 
-hard_denies:
-  - metadata.google.internal
-  - 169.254.169.254
-  - 127.0.0.0/8
-  - 10.0.0.0/8
-  - 172.16.0.0/12
-  - 192.168.0.0/16
+rules:
+  domain_match_does_not_authorize_credentials_or_write: true
+  llm_confidence_cannot_auto_authorize: true
+  auto_add_requires_deterministic_pre_authorized_trust_chain: true
+  prohibit_private_link_local_metadata_by_network_policy: true

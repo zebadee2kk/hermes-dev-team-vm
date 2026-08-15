@@ -1,57 +1,68 @@
-# High-level design
+# High-level design — Revision 2
 
 ## Purpose
 
-Hermes Autonomous Engineering Forge converts a human idea into a researched, designed, implemented, tested and documented working system with minimal owner interaction. It is not a single autonomous prompt loop; it is a governed engineering organisation whose work is represented as durable graphs and whose model compute is replaceable.
+Hermes Autonomous Engineering Forge converts a human idea into researched, designed, implemented, tested and documented working software with minimal owner interaction. Hermes is the engineering organisation and execution system; Forge is its assurance, compute, trust and governance plane.
 
-## Logical components
+## Foundational split
 
-### Hermes control plane
+### Brain
+Hermes orchestrator, stable role profiles, Skills, decomposition/judging logic and Forge decision/placement services. Brain reasons but does not execute arbitrary project code on the trusted control plane.
 
-Hermes is the executive/orchestration layer. Durable work is represented in Hermes Kanban boards/tasks/runs. Short reasoning fan-out may use `delegate_task` inside a worker. Hermes profiles provide persistent role identities and skills.
+### Session
+Hermes Kanban task/run history, Task Capsules, PostgreSQL semantic/evidence/governance state, append-only events and Git. Session state survives model swaps and worker destruction.
 
-### Graph Controller
+### Hands
+Disposable untrusted environments where code, package scripts, browsers, builds and project services run. Root may be available inside the sandbox. Normal profile uses gVisor where supported; high-risk work may use a stronger VM/microVM boundary.
 
-Maintains project, execution, organisation, governance, capability and trace relationships. It compiles project intent into graph nodes, maps executable nodes to Hermes tasks, performs impact analysis and prevents mandatory verification nodes from being silently removed.
+## Execution ownership
 
-### Compute Broker + Quota Intelligence
+Hermes Kanban is the canonical execution graph: task state, dependencies, decomposition, worker assignment, retries, blocking and durable work history. Forge does **not** maintain a parallel executable DAG.
 
-Selects compatible model deployments by capability, privacy, cost and current availability. LiteLLM executes provider calls and short retry/cooldown behaviour. Forge owns long-lived quota exhaustion/reset state and decides when a provider re-enters the pool.
+Stable organisational lanes are kept intentionally small: orchestrator, research, product, architecture, engineering, security, QA/review, documentation/release. Task-scoped Skills add specialised expertise. External coding runtimes such as Codex, Claude Code or OpenCode are integrated as worker lanes/adapters rather than separate orchestration systems.
 
-### Decision Service
+## Forge assurance plane
 
-Calculates authority levels and exposes only material decisions to the owner. L0/L1 continue automatically; L2/L3 require owner action according to policy. DEFER blocks only dependent graph nodes.
+### Semantic and evidence graph
+Relates requirements, decisions, components, files, tests, risks, sources, commits and reality anchors. It performs impact/staleness analysis but does not own Kanban lifecycle.
 
-### Worker Sandbox Manager
+### Quota Intelligence + Compute Broker
+Tracks availability of **Inference Deployments**: provider + model + account/tier + endpoint. Privacy, quota and capability belong at deployment level. LiteLLM performs actual provider calls and short request-level retry/fallback behaviour.
 
-Creates disposable development sandboxes. Workers may receive broad/root privileges inside the sandbox but cannot access control-plane secrets, raw provider keys or unrestricted network paths.
+### Task Capsule service
+Creates compact durable handoff state containing objective, acceptance criteria, constraints, relevant graph pointers, working revision, attempts, verification requirements, open questions and residual risk. Model failover reconstructs from the capsule instead of replaying an entire conversation.
 
-### Secret Broker
+### Content Trust Gateway
+Attaches provenance, trust and taint metadata to web/tool/subagent content. A downstream agent cannot promote externally influenced material to trusted merely by summarising it.
 
-Provides scoped, task-specific access to credentials/tools without placing raw secrets into model context. The implementation may later use Vaultwarden or another secret backend, but the broker contract is provider-neutral.
+### Capability + Secret Gateway
+External access is represented as scoped capabilities, not trusted domains. The gateway validates destination, identity, resource and operation, then injects credentials outside the worker. Workers never receive provider master keys or broad GitHub credentials.
 
-### Egress Policy
+### Decision Adapter
+Scores materiality/irreversibility/uncertainty/consequence, maps required owner choices to Hermes block/unblock lifecycle and supports deny-and-continue/defer-and-continue.
 
-All worker Internet access is mediated. Baseline developer registries/docs are allowlisted. Automatic additions require deterministic trust-chain evidence.
+### Evaluation and Learning
+Records real task outcomes and reality anchors. Candidate lessons are quarantined, evaluated and cross-validated before promotion to global Skills/routing priors.
 
 ## Data stores
 
-- **Hermes Kanban SQLite:** canonical Hermes task/run lifecycle within one VM/host.
-- **PostgreSQL:** project graph, decisions, provider observations, model capability/outcome data, trace/evidence and configuration metadata.
-- **Redis:** cooldowns, leases, short-lived availability state and concurrency coordination.
-- **Git/GitHub:** source and durable engineering artefacts.
-
-## Deployment model
-
-One autonomous Forge instance maps to one enclosed VM/control-plane host in V1. This deliberately aligns with Hermes Kanban's single-host dispatcher semantics. Multiple projects can use separate Hermes boards on the same host.
-
-Workers may be containers or stronger microVM sandboxes later. External/cloud deployment changes policy, not the application architecture.
+- **Hermes Kanban state:** canonical execution lifecycle on the enclosed host.
+- **PostgreSQL:** semantic/evidence/governance/capability graphs, Task Capsules, decisions, inference deployments, observations and learning candidates.
+- **Redis:** short-lived cooldowns, leases, concurrency and wake scheduling.
+- **Git/GitHub:** code and durable engineering artefacts.
+- **Append-only event ledger:** attributable actions and state transitions; later replicated off-host.
 
 ## Critical invariants
 
-1. Agent identity survives model changes.
-2. A worker cannot modify its own outer security boundary.
-3. Provider quota exhaustion never triggers identity/quota evasion.
-4. Public/free providers see only data permitted by their privacy classification.
-5. The owner is interrupted only for decisions above configured authority thresholds.
-6. Every meaningful result has evidence: source, code change, verification, model/agent/run and residual risk.
+1. No second workflow engine beside Hermes in V1.
+2. Agent/task identity survives model and worker replacement.
+3. A compromised Hand cannot alter its outer security boundary or retrieve control-plane secrets.
+4. No worker Docker socket access.
+5. Destination allowlisting alone never grants authority; sensitive external actions pass through capability-aware gateways.
+6. Externally influenced content preserves provenance/taint through handoffs.
+7. Every material completion claim has a reality anchor.
+8. Independent evaluation is risk-adaptive; high-risk work requires an independent reviewer and executable anchor.
+9. Policy/privacy is evaluated per inference deployment, not provider brand.
+10. Learning cannot directly modify the Owner Charter, security policy or trusted global Skills.
+11. Paid inference and L3 actions are impossible without explicit policy/authority records.
+12. The control plane can become QUIESCENT while retaining enough state to resume when compute returns.

@@ -1,0 +1,28 @@
+profiles:
+  low:
+    intended_for: trusted-low-risk
+    runtime: rootless-container
+    allow_root_inside: false
+    docker_socket: never
+    network: capability_gateway
+  normal:
+    intended_for: autonomous-arbitrary-project-code
+    runtime: gvisor
+    runtime_name: runsc
+    allow_root_inside: true
+    docker_socket: never
+    network: capability_gateway
+  high:
+    intended_for: hostile-high-risk-or-client-policy
+    runtime: vm_or_microvm
+    allow_root_inside: true
+    docker_socket: never
+    network: capability_gateway
+
+hard_denies:
+  - host_docker_socket
+  - control_plane_secrets
+  - control_plane_database_admin
+  - cloud_metadata
+  - host_root_namespace
+  - policy_files_write

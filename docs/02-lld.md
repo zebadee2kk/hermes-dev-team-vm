@@ -1,117 +1,96 @@
-# Low-level design
+# Low-level design — Revision 2
 
-## Process topology
+## Reference topology
 
 ```text
-VM / control-plane host
+Enclosed VM / control-plane host
 ├── Hermes Agent + gateway + Kanban dispatcher
 ├── forge-controller :8080
-│   ├── graph service
-│   ├── quota intelligence
-│   ├── compute broker
-│   └── decision service
-├── LiteLLM :4000 (loopback only)
+│   ├── task-capsule / assurance graph APIs
+│   ├── quota intelligence + compute broker
+│   ├── decision adapter
+│   ├── trust/provenance service
+│   └── evaluation/learning quarantine
+├── LiteLLM :4000 (not reachable by workers directly unless explicitly mediated)
 ├── PostgreSQL
 ├── Redis
-├── secret broker (M2/M4)
-├── egress proxy/policy (M4)
-└── sandbox manager
-    ├── worker-<task-a>
-    └── worker-<task-b>
+├── capability + secret gateway
+├── content trust gateway
+├── sandbox broker
+└── Hands
+    ├── gVisor worker-<task-a>
+    ├── gVisor worker-<task-b>
+    └── optional high-risk VM/microVM worker
 ```
 
-Hermes and Forge are trusted relative to workers. Worker containers are untrusted even when they are executing repository-authored code.
+Hermes/Forge policy services are trusted relative to Hands. Arbitrary repository code never executes in the trusted service processes.
 
 ## Hermes integration
 
-Install Hermes with the supported upstream Linux installer. Point the main/delegation model endpoint at LiteLLM. Use separate Hermes profiles for durable specialist identities and enable the Kanban toolset only where required.
+### Durable execution
+Hermes Kanban owns task state/dependencies, decomposition, blocking, retries and worker assignment. Forge stores `kanban_task_id` as a correlation pointer only.
 
-Recommended profile classes:
-
+### Stable lanes
+Initial lane classes:
 - `forge-orchestrator`
-- `researcher`
+- `research`
 - `product`
-- `architect`
-- `security-architect`
-- `engineer`
-- `reviewer`
-- `qa`
-- `documentation`
+- `architecture`
+- `engineering`
+- `security`
+- `qa-review`
+- `documentation-release`
 
-Do not create every role for every project. The organisation graph chooses a minimal team based on node requirements.
+Do not create a new persistent profile for every speciality. Attach task Skills such as `postgresql-performance`, `oauth-threat-model`, `react-accessibility` or `terraform-oci` to a suitable stable lane.
 
-### Kanban mapping
+### External runtimes
+Codex/Claude Code/OpenCode/Gemini CLI adapters implement a common worker-lane contract: receive Task Capsule + workspace + scoped capabilities; emit structured result + evidence + usage + residual risk. They do not become separate project managers.
 
-A graph executable node stores a `kanban_task_id`. Hermes remains lifecycle truth for the actual worker attempt. Forge stores richer relationships and policy metadata. Events are correlated by project/node/task/run IDs.
+## Task Capsule lifecycle
 
-Suggested completion metadata:
+1. Kanban task becomes runnable.
+2. Forge composes capsule from Kanban objective + semantic graph + policy + latest attempt.
+3. Compute Broker chooses an eligible inference deployment or lane runtime.
+4. Sandbox Broker creates/attaches a Hand.
+5. Worker executes bounded loop.
+6. Structured observations update capsule/evidence graph.
+7. On quota/model failure, checkpoint capsule and re-place compute without changing task identity.
+8. On completion, required reality anchors are checked before Kanban completion is accepted.
 
-```json
-{
-  "changed_files": ["src/example.py"],
-  "verification": ["pytest -q"],
-  "dependencies": [],
-  "blocked_reason": null,
-  "retry_notes": null,
-  "residual_risk": []
-}
-```
+## Reality anchors
 
-Never store secrets or raw credential-bearing logs in Kanban metadata.
+Anchor types include: unit/integration/E2E execution, CI check, build/package output, HTTP probe, browser/Playwright evidence, database migration verification, static/security scan, benchmark/measurement, signed owner decision or authoritative external evidence.
 
-## Graph node lifecycle
+A reviewer model approving text is evidence, but is not by itself a reality anchor for claims that can be tested mechanically.
 
-Forge node states:
+## Inference Deployment
 
-`TRIAGE -> READY -> RUNNING -> REVIEW -> COMPLETE`
+Atomic routing object:
 
-Side states:
+`provider + model + account/tier + endpoint + credential binding + terms/privacy policy`
 
-- `WAITING_HUMAN`
-- `WAITING_DEPENDENCY`
-- `WAITING_COMPUTE`
-- `FAILED`
-- `CANCELLED`
+Fields include capabilities, context/tool/structured-output support, data classes permitted, cost class, quota state, retry_at, reliability, measured outcomes, development-only flag and quarantine state.
 
-A node is READY only when all hard dependencies are complete and policy permits execution.
+## Compute unavailability
 
-## Compute request contract
+If no eligible inference deployment/runtime exists:
+- affected task/capsule enters `WAITING_COMPUTE` in Forge metadata;
+- Hermes task is blocked with a machine-readable compute reason;
+- unrelated work continues;
+- scheduler selects earliest credible `retry_at` plus jitter;
+- if all runnable work is compute-blocked, stop Hands and enter QUIESCENT mode;
+- wake re-evaluates the whole eligible pool rather than blindly retrying the previous deployment.
 
-Each inference request carries:
+## Capability gateway
 
-- capability required (`coding`, `reasoning`, `research`, `review`, `fast`, etc.)
-- data sensitivity
-- tool/structured-output requirements
-- minimum context requirements
-- latency preference
-- project budget state
-- agent identity (for trace only; not model affinity)
+A capability is at least `(subject, destination/service, resource scope, allowed operation, credential binding, expiry, audit policy)`. Example: push branch `forge/T184` to repository X, not generic access to `github.com`.
 
-The broker returns a deployment, not a model identity to the agent.
+Network controls still deny loopback/RFC1918/link-local/cloud metadata by default, but destination filtering is defence-in-depth rather than the authorisation mechanism.
 
-## Quota state
+## Deny-and-continue
 
-Provider/model deployments are one of:
+Policy denial returns a structured reason and permitted alternatives. Worker must attempt a safe alternative. Escalate after configurable repeated denials or when no safe path exists; do not wake the owner for the first ordinary denial.
 
-- AVAILABLE
-- THROTTLED_SHORT
-- QUOTA_EXHAUSTED
-- CREDIT_EXHAUSTED
-- PROVIDER_DEGRADED
-- OFFLINE
-- AUTH_FAILED
-- POLICY_BLOCKED
+## Persistence
 
-Every non-available state carries `retry_at` where it can be determined and a confidence level/source.
-
-## Persistence plan
-
-M1 introduces relational tables for projects, graph_nodes, graph_edges, decisions, provider_deployments, quota_observations, capability_scores and events. Typed edges provide graph semantics without a separate graph database.
-
-## Wake/resume
-
-When no compatible deployment exists, the node transitions to `WAITING_COMPUTE`. The scheduler computes the earliest trustworthy `retry_at`. If all runnable nodes are waiting for compute, execution becomes QUIESCENT; worker sandboxes stop, but the control plane remains alive. A timer re-evaluates routes at wake time.
-
-## API
-
-The current service exposes pure decision primitives. Future endpoints should remain idempotent and service-oriented so an MCP facade and dashboard can use the same domain layer.
+M1 persists assurance state without duplicating Kanban execution state: Task Capsules, semantic nodes/edges, anchors, trust envelopes, decisions, inference deployments, quota observations, capability scores, learning candidates and append-only events. All state-changing APIs are idempotent.

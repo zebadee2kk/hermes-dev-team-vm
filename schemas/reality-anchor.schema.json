@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes-forge.local/schemas/reality-anchor.schema.json",
+  "title": "Forge Reality Anchor",
+  "type": "object",
+  "required": ["anchor_id", "type", "claim_ref", "observed_at", "result"],
+  "properties": {
+    "anchor_id": {"type": "string"},
+    "type": {"enum": ["TEST_EXECUTION", "CI_CHECK", "BUILD_ARTIFACT", "HTTP_PROBE", "BROWSER_E2E", "DB_MIGRATION", "STATIC_SCAN", "SECURITY_SCAN", "BENCHMARK_MEASUREMENT", "AUTHORITATIVE_SOURCE", "OWNER_DECISION"]},
+    "claim_ref": {"type": "string"},
+    "executor": {"type": "string"},
+    "workspace_revision": {"type": ["string", "null"]},
+    "environment": {"type": "object"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "result": {"type": "object"},
+    "artifact_refs": {"type": "array", "items": {"type": "string"}},
+    "reproduce": {"type": ["string", "null"]},
+    "stale": {"type": "boolean", "default": false}
+  },
+  "additionalProperties": true
+}

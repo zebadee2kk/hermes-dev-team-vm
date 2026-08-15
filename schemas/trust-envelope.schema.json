@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes-forge.local/schemas/trust-envelope.schema.json",
+  "title": "Forge Content Trust Envelope",
+  "type": "object",
+  "required": ["content_ref", "source", "trust", "taint"],
+  "properties": {
+    "content_ref": {"type": "string"},
+    "source": {"type": "object"},
+    "trust": {"enum": ["owner_authority", "protected_policy", "trusted_internal", "generated_internal", "untrusted_external", "suspicious"]},
+    "taint": {"type": "array", "items": {"type": "string"}},
+    "data_sensitivity": {"enum": ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"]},
+    "integrity_hash": {"type": ["string", "null"]},
+    "injection_findings": {"type": "array", "items": {"type": "object"}},
+    "parent_refs": {"type": "array", "items": {"type": "string"}},
+    "acquired_at": {"type": ["string", "null"], "format": "date-time"}
+  },
+  "additionalProperties": true
+}

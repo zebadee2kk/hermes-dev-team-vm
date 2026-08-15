@@ -1,60 +1,37 @@
-# Human governance
+# Human governance — Revision 2
 
 ## Goal
 
-Minimise owner interaction without pretending uncertainty does not exist. Human gates are exception-based rather than stage-based.
+Minimise owner interaction while keeping material authority with the owner. Human gates are capability/risk based, not development-stage based.
 
 ## Authority levels
 
-### L0 — autonomous
-Routine, low-impact, reversible implementation choices. No notification.
+- **L0 autonomous:** routine, low-impact, reversible.
+- **L1 autonomous + audit:** meaningful but reversible; include in digest.
+- **L2 owner gate:** material scope/product/architecture/business choice.
+- **L3 hard owner gate:** production/public exposure, meaningful spend, destructive persistent action, credential/security-boundary changes, publishing/external communication or other high-consequence capability.
 
-### L1 — autonomous + audit
-Meaningful but reversible decisions. Continue and include in digest.
+Hermes Kanban owns blocking/unblocking lifecycle. Forge calculates risk, creates the decision record, presents the compact UI and translates the response back to Kanban. Do not implement a second independent task-blocking system.
 
-### L2 — owner gate
-Material product/scope/architecture decisions. Present `YES / NO / DEFER / MORE INFO`.
+## Four owner actions
 
-### L3 — hard owner gate
-Production exposure, meaningful spend, persistent destructive actions, credentials/security-boundary changes, publishing and external communications. DEFER may leave dependent work blocked; it may not be converted into silent approval.
+- **YES:** accept recommendation and unblock dependent work.
+- **NO:** reject it; calculate the next-best safe alternative where possible instead of asking an open-ended question.
+- **DEFER:** keep dependent work blocked; continue every independent branch.
+- **MORE INFO:** spawn concise evidence-gathering/explainer work, update evidence, then re-present the same decision.
 
-## Decision object
+## Deny-and-continue
 
-A decision stores:
+A policy denial to an agent is not normally an owner interruption. Return a structured denial plus allowed alternatives and let the agent adapt. Escalate only when no safe route exists, a material branch is blocked, or repeated denials indicate the worker is unable/unwilling to comply.
 
-- question
-- recommended action
-- confidence
-- materiality
-- irreversibility
-- consequence
-- rationale/evidence pointers
-- blocking graph nodes
-- authority level
-- current action/status
+## Decision score
 
-## Owner actions
-
-**YES** — accept recommendation and unblock dependencies.
-
-**NO** — reject recommendation; system should normally compute the next-best safe alternative instead of immediately asking an open-ended question.
-
-**DEFER** — leave decision unresolved and continue all independent work.
-
-**MORE INFO** — spawn/execute a concise explainer/research node, then re-present the same decision.
+Minimum inputs: materiality, irreversibility, uncertainty, consequence, security/privacy scope, monetary effect, externality and reversibility window. L3 categories override numeric scoring.
 
 ## Attention policy
 
-Do not interrupt for multiple low-value questions. Batch non-urgent L2 decisions when possible. Interrupt immediately only when a high-value project branch is blocked or policy requires it.
+Batch non-urgent L2 items. Interrupt immediately only for time-sensitive material blockage or required L3 authority. Daily/overnight digest should show project outcome progress, anchored verification, unresolved risks, compute state/cost and only the decisions needing owner attention.
 
-## Example digest
+## Governance root
 
-```text
-Project ALPHA — 82% complete
-Tests: 143/145 passing
-Model cost: £0.00
-2 decisions need you
-
-D47 Use Entra authentication? [YES] [NO] [DEFER] [MORE INFO]
-D51 Public demo deployment?    [YES] [NO] [DEFER] [MORE INFO]
-```
+`OWNER_CHARTER.md` is higher authority than project prompts, learned Skills, retrieved content and model recommendations. Ordinary agents may propose Charter/policy changes but cannot authorise them.
