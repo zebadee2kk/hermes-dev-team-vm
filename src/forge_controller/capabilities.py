@@ -205,13 +205,14 @@ def validate_grant(policy: CapabilityPolicy, grant: CapabilityGrant) -> None:
         raise CapabilityPolicyError("worker-visible credential exposure is unsupported")
 
 
-def authorize(
+def preauthorize(
     policy: CapabilityPolicy,
     grant: CapabilityGrant,
     use: CapabilityUse,
     *,
     now: datetime | None = None,
-) -> AuthorizedCapability:
+) -> CapabilityTemplate:
+    """Check issuer-independent request scope before any broker metadata/credential lookup."""
     validate_grant(policy, grant)
     selected = _template(policy, grant.template)
     current = _aware(now or datetime.now(UTC), "now")
@@ -234,10 +235,23 @@ def authorize(
             raise CapabilityDenied(f"{label} is outside the capability grant")
     if use.operation not in grant.operations or use.operation not in selected.operations:
         raise CapabilityDenied("operation is outside the capability grant")
+    if selected.branch_scope_required and (
+        not grant.branch or not use.branch or grant.branch != use.branch
+    ):
+        raise CapabilityDenied("branch is outside the capability grant")
+    return selected
+
+
+def authorize(
+    policy: CapabilityPolicy,
+    grant: CapabilityGrant,
+    use: CapabilityUse,
+    *,
+    now: datetime | None = None,
+) -> AuthorizedCapability:
+    selected = preauthorize(policy, grant, use, now=now)
 
     if selected.branch_scope_required:
-        if not grant.branch or not use.branch or grant.branch != use.branch:
-            raise CapabilityDenied("branch is outside the capability grant")
         if not use.default_branch:
             raise CapabilityDenied("default branch context is required for write authorization")
         if selected.deny_default_branch_write and use.branch == use.default_branch:
