@@ -33,16 +33,18 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 ## M2 — Quota Intelligence + Inference Deployments
 
 - [x] provider discovery/adapter interfaces
-- [ ] provider adapters — **Groq implemented**; OpenRouter, Gemini, SambaNova and generic OpenAI-compatible adapters remain
+- [x] provider adapters — Groq, OpenRouter, Gemini, SambaNova and explicit generic OpenAI-compatible adapter implemented
+- [x] persistent discovery sync adds new models as quarantined deployments without regressing already-qualified deployment state
 - [x] account/tier/endpoint-specific Inference Deployment registry
-- [ ] reset-time confidence, health probes and jitter — basic reset parsing/confidence implemented; active probing/jitter remain
-- [ ] privacy/terms evidence per deployment — schema exists; automated evidence/classification remains
-- [ ] LiteLLM integration and virtual capability aliases
+- [ ] reset-time confidence, health probes and jitter — request/token reset parsing plus deterministic post-reset/exponential jitter implemented; active provider probe loop remains
+- [ ] privacy/terms evidence per deployment — qualification gate now requires terms evidence, passing smoke test and positive capability measurements; automated evidence collection/classification remains
+- [x] LiteLLM integration foundation — Forge-approved exact deployment aliases, environment-reference credentials, deterministic config materialization, atomic publish and PostgreSQL-backed renderer implemented
+- [ ] LiteLLM runtime reconciliation — controlled restart/roll only on config hash change and post-reload verification belong to deployment automation
 - [ ] `WAITING_COMPUTE` block/wake contract with Hermes — durable Forge placement/wake behaviour exists; Hermes block/unblock adapter remains M3 integration work
 
 **Exit:** quota exhaustion swaps inference deployment using the same Task Capsule; all-compatible-compute exhaustion blocks then resumes safely.
 
-**Current status:** fake-provider restart-safe failover is covered by CI and the first real provider (Groq) has model discovery + quota-observation handling. Discovered models enter `QUARANTINED`/disabled and require terms classification, smoke test and capability evaluation before routing.
+**Current status:** M2 now has a complete provider lifecycle foundation: discover -> quarantine -> qualify -> persist -> Forge place -> exact LiteLLM deployment alias. Fake-provider restart-safe failover is covered by CI and four real provider adapters are implemented from current provider contracts. Remaining M2 work is active health probing/evidence automation and one live credentialed end-to-end provider/LiteLLM failover test; Hermes block/unblock integration intentionally starts in M3.
 
 ## M3 — Hermes execution integration
 
@@ -112,6 +114,7 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 - [ ] OCI ARM profile with multi-arch/gVisor validation and disposable-state recovery
 - [ ] portable local VM
 - [ ] client-safe restricted/high-isolation profile
+- [ ] wire atomic LiteLLM config publish to controlled restart/roll + health verification
 - [ ] encrypted backup + off-host event/state restore drill
 
 **Exit:** same release rebuilds from scratch in at least two profiles and resumes a checkpointed project.
