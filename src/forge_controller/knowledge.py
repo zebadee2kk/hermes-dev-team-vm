@@ -51,6 +51,64 @@ class EvaluationOutcome(StrEnum):
     FAIL = "fail"
 
 
+class SignalTier(StrEnum):
+    IGNORE = "ignore"
+    WATCH = "watch"
+    TEST = "test"
+
+
+class CandidateSignalInput(BaseModel):
+    primary_source: bool = False
+    concrete_artifact: bool = False
+    reproducible: bool = False
+    production_evidence: bool = False
+    measurable_results: bool = False
+    postmortem_or_failure_analysis: bool = False
+    independent_corroboration: bool = False
+    security_advisory_or_research: bool = False
+    rumor_only: bool = False
+    marketing_only: bool = False
+
+
+class CandidateSignalAssessment(BaseModel):
+    score: int = Field(ge=0, le=100)
+    tier: SignalTier
+    reasons: list[str]
+
+
+def assess_candidate_signal(signals: CandidateSignalInput) -> CandidateSignalAssessment:
+    """Evidence-weighted triage that intentionally ignores social engagement metrics."""
+
+    score = 0
+    reasons: list[str] = []
+    positive = [
+        (signals.primary_source, 20, "primary source"),
+        (signals.concrete_artifact, 20, "concrete artifact"),
+        (signals.reproducible, 15, "reproducible"),
+        (signals.production_evidence, 20, "production evidence"),
+        (signals.measurable_results, 10, "measurable results"),
+        (signals.postmortem_or_failure_analysis, 10, "postmortem/failure analysis"),
+        (signals.independent_corroboration, 10, "independent corroboration"),
+        (signals.security_advisory_or_research, 10, "security research/advisory"),
+    ]
+    for present, points, reason in positive:
+        if present:
+            score += points
+            reasons.append(f"+{points} {reason}")
+    if signals.rumor_only:
+        score -= 50
+        reasons.append("-50 rumor only")
+    if signals.marketing_only:
+        score -= 30
+        reasons.append("-30 marketing only")
+    if not signals.concrete_artifact:
+        score -= 15
+        reasons.append("-15 no concrete artifact")
+    score = max(0, min(100, score))
+    tier = SignalTier.TEST if score >= 70 else SignalTier.WATCH if score >= 40 else SignalTier.IGNORE
+    return CandidateSignalAssessment(score=score, tier=tier, reasons=reasons)
+
+
 class RawSourceManifest(BaseModel):
     source_id: str = Field(pattern=r"^[A-Za-z0-9._:-]+$")
     sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
@@ -123,6 +181,7 @@ class TechnologyCandidate(BaseModel):
     problem: str
     proposed_value: str
     evidence_refs: list[str] = Field(min_length=1)
+    signal_assessment: CandidateSignalAssessment | None = None
     replacement_scope: list[str] = Field(default_factory=list)
     integration_seam: str
     test_plan: list[str] = Field(min_length=1)
@@ -157,6 +216,8 @@ def evaluate_promotion(
     reasons: list[str] = []
     if candidate.status != CandidateStatus.PROBATION:
         reasons.append("candidate is not in probation")
+    if candidate.signal_assessment and candidate.signal_assessment.tier != SignalTier.TEST:
+        reasons.append("candidate did not pass high-signal intake triage")
     if candidate.probation_started_at is None:
         reasons.append("probation start is not recorded")
     elif now - candidate.probation_started_at < timedelta(days=policy.min_probation_days):
@@ -251,7 +312,16 @@ class KnowledgeStore:
             "updated_at": page.updated_at.isoformat(),
             "derived_from": sorted({ref for claim in page.claims for ref in claim.source_refs}),
         }
-        lines = ["---", yaml.safe_dump(frontmatter, sort_keys=True).strip(), "---", "", f"# {page.title}", "", page.summary, ""]
+        lines = [
+            "---",
+            yaml.safe_dump(frontmatter, sort_keys=True).strip(),
+            "---",
+            "",
+            f"# {page.title}",
+            "",
+            page.summary,
+            "",
+        ]
         for claim in page.claims:
             refs = ", ".join(claim.source_refs)
             lines.extend(
@@ -317,7 +387,9 @@ class KnowledgeStore:
                 if source_ref not in known_sources:
                     unknown_sources.append(f"{slug}->raw:{source_ref}")
         return KnowledgeLintReport(
-            orphan_pages=sorted(slug for slug, count in inbound.items() if count == 0 and slug != "index"),
+            orphan_pages=sorted(
+                slug for slug, count in inbound.items() if count == 0 and slug != "index"
+            ),
             broken_links=sorted(set(broken)),
             unknown_source_refs=sorted(set(unknown_sources)),
         )
@@ -333,7 +405,11 @@ class KnowledgeStore:
         return path
 
     def _page_paths(self) -> list[Path]:
-        return [path for path in sorted(self.wiki_dir.rglob("*.md")) if path.name not in {"index.md", "log.md"}]
+        return [
+            path
+            for path in sorted(self.wiki_dir.rglob("*.md"))
+            if path.name not in {"index.md", "log.md"}
+        ]
 
     def _slug_for(self, path: Path) -> str:
         return str(path.relative_to(self.wiki_dir).with_suffix("")).replace("\\", "/")
