@@ -81,7 +81,7 @@ def _client() -> ForgeAssuranceClient:
 
 def _mapping(value: object) -> dict[str, object]:
     if not isinstance(value, Mapping):
-        raise ValueError("Forge assurance response must be a JSON object")
+        raise TypeError("Forge assurance response must be a JSON object")
     return {str(key): item for key, item in value.items()}
 
 
