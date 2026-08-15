@@ -1,0 +1,42 @@
+[Unit]
+Description=Hermes Forge Telegram governance adapter
+After=network-online.target forge-controller.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=forge-telegram
+Group=forge-telegram
+RuntimeDirectory=forge-telegram
+RuntimeDirectoryMode=0770
+StateDirectory=forge-telegram
+StateDirectoryMode=0700
+UMask=0007
+EnvironmentFile=/etc/forge/telegram-governance.env
+LoadCredential=telegram-bot-token:/etc/forge/secrets/telegram-bot-token
+LoadCredential=forge-control-key:/etc/forge/secrets/forge-control-key
+LoadCredential=telegram-callback-hmac-key:/etc/forge/secrets/telegram-callback-hmac-key.hex
+LoadCredential=telegram-notify-api-key:/etc/forge/secrets/telegram-notify-api-key
+ExecStart=/opt/forge/venv/bin/forge-telegram-governance
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/forge-telegram /run/forge-telegram
+
+[Install]
+WantedBy=multi-user.target
