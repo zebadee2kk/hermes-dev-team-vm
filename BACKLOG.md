@@ -18,25 +18,29 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 
 ## M1 — Durable assurance/session state
 
-- [ ] PostgreSQL models/migrations for Task Capsules, semantic nodes/edges, reality anchors, trust envelopes, decisions, inference deployments, quota observations, capability/outcome scores, learning candidates and events
-- [ ] Redis repository for cooldowns/leases/wake coordination
-- [ ] append-only audit/event service
-- [ ] idempotency keys and optimistic/concurrency protection
-- [ ] recovery/replay tests
+- [x] PostgreSQL models/migrations for Task Capsules, semantic nodes/edges, reality anchors, trust envelopes, decisions, inference deployments, quota observations, capability/outcome scores, learning candidates and events
+- [x] Redis repository for cooldown/lease/wake coordination primitives
+- [x] append-only audit/event append service
+- [ ] complete idempotency/concurrency protection — event idempotency and owner-safe Redis leases exist; add optimistic Task Capsule revision/checkpoint protection
+- [x] restart/recovery vertical test preserves Task Capsule + deployment quota state and resumes placement
 
 **Exit:** controller restart preserves assurance, quota, decision and handoff state without duplicating Hermes task lifecycle.
 
+**Current status:** M1 data model and core persistence are implemented. Remaining M1 work is primarily production-hardening of concurrent capsule checkpoints, database migration testing against PostgreSQL (not only SQLite test schema), and richer event replay/backup validation.
+
 ## M2 — Quota Intelligence + Inference Deployments
 
-- [ ] provider discovery/adapter interfaces
-- [ ] Groq, OpenRouter, Gemini, SambaNova adapters; generic OpenAI-compatible adapter
-- [ ] account/tier/endpoint-specific deployment registry
-- [ ] reset-time confidence, health probes and jitter
-- [ ] privacy/terms evidence per deployment
+- [x] provider discovery/adapter interfaces
+- [ ] provider adapters — **Groq implemented**; OpenRouter, Gemini, SambaNova and generic OpenAI-compatible adapters remain
+- [x] account/tier/endpoint-specific Inference Deployment registry
+- [ ] reset-time confidence, health probes and jitter — basic reset parsing/confidence implemented; active probing/jitter remain
+- [ ] privacy/terms evidence per deployment — schema exists; automated evidence/classification remains
 - [ ] LiteLLM integration and virtual capability aliases
-- [ ] `WAITING_COMPUTE` block/wake contract with Hermes
+- [ ] `WAITING_COMPUTE` block/wake contract with Hermes — durable Forge placement/wake behaviour exists; Hermes block/unblock adapter remains M3 integration work
 
 **Exit:** quota exhaustion swaps inference deployment using the same Task Capsule; all-compatible-compute exhaustion blocks then resumes safely.
+
+**Current status:** fake-provider restart-safe failover is covered by CI and the first real provider (Groq) has model discovery + quota-observation handling. Discovered models enter `QUARANTINED`/disabled and require terms classification, smoke test and capability evaluation before routing.
 
 ## M3 — Hermes execution integration
 
@@ -79,9 +83,9 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 
 ## M6 — Semantic/evidence graph + reality anchors
 
-- [ ] typed semantic/evidence vocabulary
-- [ ] claim/anchor persistence and freshness
-- [ ] impact/staleness traversal
+- [x] typed semantic node/edge persistence foundation
+- [x] reality-anchor persistence foundation
+- [ ] claim/anchor freshness and stale-impact traversal
 - [ ] request re-validation work through Hermes when anchors become stale
 - [ ] protected acceptance/security/Charter invariants
 - [ ] risk-adaptive independent review policy
@@ -92,9 +96,10 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 
 - [ ] canonical micro-evals for initial priors
 - [ ] real-task anchored outcome scoring
-- [ ] deployment/runtime capability learning with uncertainty
+- [x] persistent deployment capability-score foundation with uncertainty metadata
 - [ ] regression detection/quarantine
-- [ ] candidate lesson quarantine + offline/cross-project promotion workflow
+- [x] quarantined learning-candidate persistence foundation
+- [ ] offline/cross-project promotion workflow
 - [ ] recurring documentation/dependency/architecture/security/test gardening tasks
 
 **Exit:** routing/Skills improve from measured outcomes without allowing learned state to weaken Charter/policy/security.
