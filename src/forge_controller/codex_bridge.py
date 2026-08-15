@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import binascii
 import json
 import os
 import stat
@@ -23,6 +24,9 @@ class CodexBridgeServer:
     async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         process: asyncio.subprocess.Process | None = None
         container_name: str | None = None
+        stdin_task: asyncio.Task[None] | None = None
+        process_task: asyncio.Task[int] | None = None
+        output_tasks: list[asyncio.Task[None]] = []
         send_lock = asyncio.Lock()
         try:
             launch = await _read_json_line(reader)
@@ -43,27 +47,57 @@ class CodexBridgeServer:
             await _send_json(writer, {"type": "ready", "container": container_name}, send_lock)
 
             stdin_task = asyncio.create_task(_feed_stdin(reader, process))
-            stdout_task = asyncio.create_task(
-                _pump_output(process.stdout, writer, "stdout", send_lock)
-            )
-            stderr_task = asyncio.create_task(
-                _pump_output(process.stderr, writer, "stderr", send_lock)
-            )
-            returncode = await process.wait()
-            stdin_task.cancel()
+            output_tasks = [
+                asyncio.create_task(_pump_output(process.stdout, writer, "stdout", send_lock)),
+                asyncio.create_task(_pump_output(process.stderr, writer, "stderr", send_lock)),
+            ]
+            process_task = asyncio.create_task(process.wait())
+            try:
+                async with asyncio.timeout(self.config.limits.timeout_seconds):
+                    while not process_task.done():
+                        done, _pending = await asyncio.wait(
+                            {process_task, stdin_task},
+                            return_when=asyncio.FIRST_COMPLETED,
+                        )
+                        if stdin_task in done:
+                            error = stdin_task.exception()
+                            if error is not None:
+                                raise error
+                            break
+                    returncode = await process_task
+            except TimeoutError:
+                await _send_json(writer, {"type": "exit", "returncode": 124}, send_lock)
+                return
+
+            if not stdin_task.done():
+                stdin_task.cancel()
             await asyncio.gather(stdin_task, return_exceptions=True)
-            await asyncio.gather(stdout_task, stderr_task)
+            await asyncio.gather(*output_tasks)
             await _send_json(writer, {"type": "exit", "returncode": returncode}, send_lock)
-        except (SandboxPolicyError, ValueError, json.JSONDecodeError) as exc:
+        except (SandboxPolicyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             await _send_json(writer, {"type": "error", "message": str(exc)}, send_lock)
         except (ConnectionError, OSError, asyncio.IncompleteReadError):
             pass
         finally:
+            tasks: list[asyncio.Task[object]] = []
+            if stdin_task is not None and not stdin_task.done():
+                stdin_task.cancel()
+                tasks.append(stdin_task)
+            for task in output_tasks:
+                if not task.done():
+                    task.cancel()
+                    tasks.append(task)
+            if process_task is not None and not process_task.done():
+                process_task.cancel()
+                tasks.append(process_task)
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+
             if process is not None and process.returncode is None:
                 process.terminate()
                 try:
                     await asyncio.wait_for(process.wait(), timeout=5)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     process.kill()
                     await process.wait()
             if container_name:
@@ -75,9 +109,7 @@ class CodexBridgeServer:
                 pass
 
 
-async def _feed_stdin(
-    reader: asyncio.StreamReader, process: asyncio.subprocess.Process
-) -> None:
+async def _feed_stdin(reader: asyncio.StreamReader, process: asyncio.subprocess.Process) -> None:
     assert process.stdin is not None
     while True:
         frame = await _read_json_line(reader)
@@ -87,7 +119,10 @@ async def _feed_stdin(
             return
         if kind != "stdin" or not isinstance(frame.get("data"), str):
             raise ValueError("invalid Codex bridge stdin frame")
-        payload = base64.b64decode(frame["data"], validate=True)
+        try:
+            payload = base64.b64decode(frame["data"], validate=True)
+        except binascii.Error as exc:
+            raise ValueError("invalid Codex bridge base64 payload") from exc
         process.stdin.write(payload)
         await process.stdin.drain()
 
@@ -116,7 +151,7 @@ async def _read_json_line(reader: asyncio.StreamReader) -> dict[str, object]:
         raise ValueError("Codex bridge frame too large")
     payload = json.loads(line)
     if not isinstance(payload, dict):
-        raise ValueError("Codex bridge frame must be a JSON object")
+        raise TypeError("Codex bridge frame must be a JSON object")
     return payload
 
 
@@ -142,7 +177,7 @@ async def _force_remove(container_name: str) -> None:
             stderr=asyncio.subprocess.DEVNULL,
         )
         await asyncio.wait_for(process.wait(), timeout=10)
-    except (FileNotFoundError, OSError, asyncio.TimeoutError):
+    except (TimeoutError, FileNotFoundError, OSError):
         pass
 
 
