@@ -12,10 +12,13 @@ from .decision import classify_decision
 from .governance import (
     DecisionPrompt,
     DecisionTransition,
+    DenialOutcome,
+    DenialState,
     GovernanceError,
     apply_owner_action,
     build_decision_prompt,
 )
+from .governance_store import GovernanceDenialStore
 from .models import DecisionAction, DecisionClassification, DecisionRequest, Sensitivity
 from .repository import AssuranceRepository
 from .trust_gateway import SourceDescriptor, TrustGateway, TrustGatewayError
@@ -73,6 +76,24 @@ class OwnerActionRequest(BaseModel):
 
     action: DecisionAction
     evidence_refs: list[str] = Field(default_factory=list, max_length=64)
+
+
+class DenialObserveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    project_id: str
+    task_id: str
+    signature: str = Field(min_length=1, max_length=255)
+    reason: str = Field(min_length=1, max_length=4096)
+    material: bool = False
+
+
+class SafeAlternativeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    project_id: str
+    task_id: str
+    signature: str = Field(min_length=1, max_length=255)
 
 
 def _repository(request: Request) -> AssuranceRepository:
@@ -224,6 +245,73 @@ async def decision_owner_action(
         },
     )
     return transition
+
+
+@router.post("/denials", response_model=DenialOutcome)
+async def denial_observe(payload: DenialObserveRequest, request: Request) -> DenialOutcome:
+    _authorize_control(request)
+    repository = _repository(request)
+    outcome = await GovernanceDenialStore(repository.sessions).record_denial(
+        project_id=payload.project_id,
+        task_id=payload.task_id,
+        signature=payload.signature,
+        reason=payload.reason,
+        material=payload.material,
+    )
+    await repository.append_event(
+        "governance.policy_denied",
+        project_id=payload.project_id,
+        task_id=payload.task_id,
+        payload={
+            "signature": payload.signature,
+            "directive": outcome.directive.value,
+            "owner_interrupt_required": outcome.owner_interrupt_required,
+            "consecutive": outcome.state.consecutive,
+            "total": outcome.state.total,
+            "material": payload.material,
+        },
+    )
+    return outcome
+
+
+@router.post("/denials/safe-alternative", response_model=DenialState)
+async def denial_safe_alternative(
+    payload: SafeAlternativeRequest,
+    request: Request,
+) -> DenialState:
+    _authorize_control(request)
+    repository = _repository(request)
+    state = await GovernanceDenialStore(repository.sessions).record_safe_alternative(
+        project_id=payload.project_id,
+        task_id=payload.task_id,
+        signature=payload.signature,
+    )
+    await repository.append_event(
+        "governance.safe_alternative_succeeded",
+        project_id=payload.project_id,
+        task_id=payload.task_id,
+        payload={
+            "signature": payload.signature,
+            "consecutive": state.consecutive,
+            "total": state.total,
+        },
+    )
+    return state
+
+
+@router.get("/denials/state", response_model=DenialState)
+async def denial_state(
+    project_id: str,
+    task_id: str,
+    signature: str,
+    request: Request,
+) -> DenialState:
+    _authorize_control(request)
+    return await GovernanceDenialStore(_repository(request).sessions).get_state(
+        project_id=project_id,
+        task_id=task_id,
+        signature=signature,
+    )
 
 
 def _same_decision_intent(first: DecisionRecord, second: DecisionRecord) -> bool:
