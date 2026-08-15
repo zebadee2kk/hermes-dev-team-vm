@@ -1,0 +1,23 @@
+# Seed config only. The Forge router owns capability/quota decisions and should eventually
+# materialise the currently eligible deployment set for LiteLLM rather than hand-maintaining it.
+model_list:
+  - model_name: forge/free-general
+    litellm_params:
+      model: openrouter/openrouter/free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+router_settings:
+  num_retries: 1
+  retry_after: 1
+  allowed_fails: 2
+  cooldown_time: 60
+
+# LiteLLM handles request-level retries/cooldowns. Long-lived quota/reset truth belongs to
+# Forge Quota Intelligence so exhausted providers are not hammered repeatedly.
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/LITELLM_DATABASE_URL
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false

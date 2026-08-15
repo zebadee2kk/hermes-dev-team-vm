@@ -1,0 +1,48 @@
+profiles:
+  local-trusted:
+    target: proxmox_or_local_vm
+    architecture: amd64
+    control_plane_hardening: standard
+    worker_privilege: root_in_sandbox
+    local_models: true
+    lan_access: deny_by_default
+    max_concurrent_workers: 4
+
+  cloud-isolated:
+    target: generic_vps_or_oci
+    architecture: arm64_or_amd64
+    control_plane_hardening: strict
+    worker_privilege: root_in_sandbox
+    local_models: false
+    lan_access: none
+    public_ingress: deny_by_default
+    max_concurrent_workers: 2
+
+  oci-always-free:
+    target: oci_ampere_a1
+    architecture: arm64
+    control_plane_hardening: strict
+    worker_privilege: root_in_sandbox
+    local_models: false
+    max_concurrent_workers: 1
+    resource_assumption:
+      ocpu: 2
+      memory_gb: 12
+    note: "Current OCI Always Free allowance; validate again at deployment time. Design for instance reclamation/rebuild."
+
+  portable:
+    target: laptop_vm
+    architecture: amd64_or_arm64
+    control_plane_hardening: standard
+    worker_privilege: root_in_sandbox
+    local_models: optional
+    max_concurrent_workers: 2
+
+  client-safe:
+    target: client_environment
+    architecture: amd64_or_arm64
+    control_plane_hardening: strict
+    worker_privilege: constrained
+    local_models: preferred
+    public_free_models: public_data_only
+    max_concurrent_workers: 2

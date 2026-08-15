@@ -1,0 +1,55 @@
+# Provider registry seed. Availability, models, limits and terms change frequently; adapters
+# must discover current state at runtime and persist observations rather than trusting this file.
+providers:
+  openrouter:
+    enabled: false
+    cost_class: free_api
+    privacy_class: public_only
+    quota_adapter: openrouter
+    notes: "Use :free/free-router capacity only unless paid emergency policy explicitly permits otherwise."
+  groq:
+    enabled: false
+    cost_class: free_api
+    privacy_class: public_only
+    quota_adapter: groq
+  gemini:
+    enabled: false
+    cost_class: free_api
+    privacy_class: public_only
+    quota_adapter: gemini
+  sambanova:
+    enabled: false
+    cost_class: free_api
+    privacy_class: public_only
+    quota_adapter: sambanova
+  mistral:
+    enabled: false
+    cost_class: free_api
+    privacy_class: public_only
+    quota_adapter: generic
+  nvidia_nim:
+    enabled: false
+    cost_class: free_api
+    privacy_class: public_only
+    quota_adapter: generic
+    development_only: true
+  cloudflare_workers_ai:
+    enabled: false
+    cost_class: free_api
+    privacy_class: public_only
+    quota_adapter: generic
+  huggingface:
+    enabled: false
+    cost_class: free_api
+    privacy_class: public_only
+    quota_adapter: generic
+  ollama:
+    enabled: false
+    cost_class: local
+    privacy_class: restricted_allowed
+    quota_adapter: local
+
+policy_defaults:
+  unknown_provider_privacy_class: public_only
+  unknown_model_enabled: false
+  promotional_capacity_is_durable: false

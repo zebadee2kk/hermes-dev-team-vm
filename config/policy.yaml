@@ -1,0 +1,52 @@
+version: 1
+
+budget:
+  currency: GBP
+  monthly_emergency_max: 10.00
+  default_runtime_budget: 0.00
+  paid_fallback_requires_human_gate: true
+
+human_authority:
+  L0:
+    autonomous: true
+    notify: false
+  L1:
+    autonomous: true
+    notify: digest
+  L2:
+    autonomous: false
+    actions: [YES, NO, DEFER, MORE_INFO]
+  L3:
+    autonomous: false
+    hard_gate: true
+    actions: [YES, NO, MORE_INFO]
+
+mandatory_l3_actions:
+  - incur_material_spend
+  - production_deploy
+  - publish_repository
+  - delete_persistent_production_data
+  - grant_or_expand_credentials
+  - weaken_security_boundary
+  - send_external_communication
+  - expose_public_service
+
+routing:
+  free_api_first: true
+  local_for_routine_work: true
+  provider_terms_must_be_known: true
+  unknown_provider_data_class: PUBLIC
+  no_quota_evasion: true
+
+loops:
+  default_max_attempts: 5
+  default_max_elapsed_minutes: 90
+  model_switch_after_same_failure: 2
+  escalate_on_stagnation: true
+
+sandbox:
+  workers_disposable: true
+  worker_root_allowed: true
+  host_root_allowed: false
+  direct_lan_access: false
+  direct_secret_store_access: false

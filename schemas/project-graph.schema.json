@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/project-graph.schema.json",
+  "title": "Forge Project Graph",
+  "type": "object",
+  "required": ["project_id", "nodes", "edges"],
+  "properties": {
+    "project_id": {"type": "string", "minLength": 1},
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "status", "title"],
+        "properties": {
+          "id": {"type": "string"},
+          "kind": {"type": "string"},
+          "status": {"enum": ["TRIAGE", "READY", "RUNNING", "REVIEW", "WAITING_HUMAN", "WAITING_DEPENDENCY", "WAITING_COMPUTE", "COMPLETE", "FAILED", "CANCELLED"]},
+          "title": {"type": "string"},
+          "kanban_task_id": {"type": ["string", "null"]},
+          "protected": {"type": "boolean", "default": false}
+        },
+        "additionalProperties": true
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "relationship", "target"],
+        "properties": {
+          "source": {"type": "string"},
+          "relationship": {"type": "string"},
+          "target": {"type": "string"},
+          "metadata": {"type": "object"}
+        }
+      }
+    }
+  }
+}

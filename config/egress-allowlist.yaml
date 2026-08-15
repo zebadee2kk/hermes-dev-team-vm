@@ -1,0 +1,49 @@
+version: 1
+mode: allowlist
+
+auto_trust:
+  # Auto-add only through deterministic trust chains, never because an LLM reports high confidence.
+  enabled: true
+  allowed_chains:
+    - package_registry_to_declared_source_repository
+    - official_docs_to_same_registered_domain
+  requires_https: true
+  deny_ip_literals: true
+
+baseline_domains:
+  source_control:
+    - github.com
+    - api.github.com
+    - raw.githubusercontent.com
+  python:
+    - pypi.org
+    - files.pythonhosted.org
+  node:
+    - npmjs.org
+    - registry.npmjs.org
+    - nodejs.org
+  containers:
+    - docker.io
+    - registry-1.docker.io
+    - ghcr.io
+  os:
+    - ubuntu.com
+    - archive.ubuntu.com
+    - security.ubuntu.com
+  documentation:
+    - developer.mozilla.org
+    - learn.microsoft.com
+    - docs.python.org
+  model_control:
+    - api.openrouter.ai
+    - openrouter.ai
+    - api.groq.com
+    - generativelanguage.googleapis.com
+
+hard_denies:
+  - metadata.google.internal
+  - 169.254.169.254
+  - 127.0.0.0/8
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
