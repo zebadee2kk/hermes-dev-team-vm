@@ -21,12 +21,14 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 - [x] PostgreSQL models/migrations for Task Capsules, semantic nodes/edges, reality anchors, trust envelopes, decisions, inference deployments, quota observations, capability/outcome scores, learning candidates and events
 - [x] Redis repository for cooldown/lease/wake coordination primitives
 - [x] append-only audit/event append service
-- [ ] complete idempotency/concurrency protection — event idempotency and owner-safe Redis leases exist; add optimistic Task Capsule revision/checkpoint protection
+- [x] idempotency/concurrency foundation — idempotent events, owner-safe Redis leases, monotonic/idempotent Task Capsule revision checkpoints with conflict rejection
 - [x] restart/recovery vertical test preserves Task Capsule + deployment quota state and resumes placement
+- [x] PostgreSQL migration chain validated in CI against PostgreSQL 16
+- [x] persistence-backed FastAPI surface validated across controller restart
 
 **Exit:** controller restart preserves assurance, quota, decision and handoff state without duplicating Hermes task lifecycle.
 
-**Current status:** M1 data model and core persistence are implemented. Remaining M1 work is primarily production-hardening of concurrent capsule checkpoints, database migration testing against PostgreSQL (not only SQLite test schema), and richer event replay/backup validation.
+**Current status:** M1 core exit is satisfied and green in CI. Deeper off-host event replay, encrypted backup/restore and host-loss drills remain deliberate M8/M9 hardening work rather than reasons to expand the M1 control plane.
 
 ## M2 — Quota Intelligence + Inference Deployments
 
@@ -110,7 +112,7 @@ The backlog is ordered to reach a safe autonomous vertical slice early while avo
 - [ ] OCI ARM profile with multi-arch/gVisor validation and disposable-state recovery
 - [ ] portable local VM
 - [ ] client-safe restricted/high-isolation profile
-- [ ] backup + off-host event/state restore drill
+- [ ] encrypted backup + off-host event/state restore drill
 
 **Exit:** same release rebuilds from scratch in at least two profiles and resumes a checkpointed project.
 
