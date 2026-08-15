@@ -22,6 +22,17 @@ from forge_controller.knowledge import (
 )
 
 
+def strong_signal():
+    return assess_candidate_signal(
+        CandidateSignalInput(
+            primary_source=True,
+            concrete_artifact=True,
+            reproducible=True,
+            production_evidence=True,
+        )
+    )
+
+
 def test_high_signal_filter_rewards_artifacts_not_hype() -> None:
     strong = assess_candidate_signal(
         CandidateSignalInput(
@@ -45,6 +56,21 @@ def test_high_signal_filter_rewards_artifacts_not_hype() -> None:
     assert strong.score >= 70
     assert hype.tier == SignalTier.IGNORE
     assert hype.score == 0
+
+
+def test_technology_candidate_requires_signal_assessment() -> None:
+    with pytest.raises(ValidationError):
+        TechnologyCandidate(
+            candidate_id="missing-signal",
+            name="Missing signal",
+            kind=CandidateKind.WRAPPER,
+            problem="Unknown",
+            proposed_value="Unknown",
+            evidence_refs=["raw:source"],
+            integration_seam="none",
+            test_plan=["test"],
+            acceptance=["pass"],
+        )
 
 
 def test_raw_sources_are_immutable_and_wiki_claims_are_grounded(tmp_path) -> None:
@@ -156,6 +182,7 @@ def _candidate(now: datetime) -> TechnologyCandidate:
         problem="Improve durable agent execution.",
         proposed_value="Reduce glue and improve reliability.",
         evidence_refs=["raw:primary-docs"],
+        signal_assessment=strong_signal(),
         integration_seam="MCP boundary",
         test_plan=["Run against a real project workflow"],
         acceptance=["No regression in security, tracing, cost or task completion"],
@@ -164,10 +191,8 @@ def _candidate(now: datetime) -> TechnologyCandidate:
     )
 
 
-def test_candidate_promotion_requires_real_workload_anchors_and_probation() -> None:
-    now = datetime(2026, 8, 15, tzinfo=UTC)
-    candidate = _candidate(now)
-    evaluations = [
+def _passing_evaluations(candidate: TechnologyCandidate) -> list[CandidateEvaluation]:
+    return [
         CandidateEvaluation(
             evaluation_id="E1",
             candidate_id=candidate.candidate_id,
@@ -185,7 +210,12 @@ def test_candidate_promotion_requires_real_workload_anchors_and_probation() -> N
             anchor_refs=["RA-2"],
         ),
     ]
-    decision = evaluate_promotion(candidate, evaluations, now=now)
+
+
+def test_candidate_promotion_requires_real_workload_anchors_and_probation() -> None:
+    now = datetime(2026, 8, 15, tzinfo=UTC)
+    candidate = _candidate(now)
+    decision = evaluate_promotion(candidate, _passing_evaluations(candidate), now=now)
     assert decision.eligible is True
     assert decision.reasons == []
 
@@ -214,3 +244,26 @@ def test_candidate_failure_blocks_promotion() -> None:
     decision = evaluate_promotion(candidate, evaluations, now=now)
     assert decision.eligible is False
     assert "candidate has unresolved failing evaluations" in decision.reasons
+
+
+def test_direct_promoted_candidate_write_is_rejected(tmp_path) -> None:
+    now = datetime(2026, 8, 15, tzinfo=UTC)
+    store = KnowledgeStore(tmp_path / "knowledge")
+    candidate = _candidate(now).model_copy(update={"status": CandidateStatus.PROMOTED})
+    with pytest.raises(KnowledgeError, match="promote_candidate"):
+        store.save_candidate(candidate)
+
+
+def test_promote_candidate_is_the_controlled_state_transition(tmp_path) -> None:
+    now = datetime(2026, 8, 15, tzinfo=UTC)
+    store = KnowledgeStore(tmp_path / "knowledge")
+    candidate = _candidate(now)
+    promoted = store.promote_candidate(
+        candidate,
+        _passing_evaluations(candidate),
+        now=now,
+    )
+    assert promoted.status == CandidateStatus.PROMOTED
+    assert promoted.promoted_at == now
+    stored = (store.candidates_dir / f"{candidate.candidate_id}.yaml").read_text()
+    assert "status: promoted" in stored
