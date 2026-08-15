@@ -115,7 +115,7 @@ def create_app(
                 },
             ) from exc
 
-    @app.post("/v1/deployments/{deployment_id}/observations", response_model=Availability)
+    @app.post("/v1/deployments/{deployment_id:path}/observations", response_model=Availability)
     async def availability_observe(
         deployment_id: str,
         observation: QuotaObservation,
