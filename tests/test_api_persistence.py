@@ -73,3 +73,35 @@ def test_durable_api_and_capsule_revision_guard(tmp_path) -> None:
         blocked = client.post("/v1/route", json={"capability": "coding", "sensitivity": "PUBLIC"})
         assert blocked.status_code == 503
         assert blocked.json()["detail"]["state"] == "WAITING_COMPUTE"
+
+
+def test_capsule_keeps_identity_across_monotonic_revisions(tmp_path) -> None:
+    url = f"sqlite+aiosqlite:///{tmp_path / 'revisions.db'}"
+    app = create_app(database_url=url, auto_create_schema=True)
+    first = TaskCapsule(
+        capsule_id="C1",
+        revision=1,
+        project_id="P1",
+        task_id="T1",
+        kanban_task_id="t_1",
+        objective="fix the failing test",
+        acceptance=["test passes"],
+    )
+    second = first.model_copy(update={"revision": 2, "open_questions": ["reviewed?"]})
+    skipped = first.model_copy(update={"revision": 4})
+    rewritten = second.model_copy(update={"objective": "something else"})
+
+    with TestClient(app) as client:
+        assert client.post("/v1/capsules", json=first.model_dump(mode="json")).status_code == 200
+        # Same capsule_id, next revision: the normal checkpoint path must succeed.
+        assert client.post("/v1/capsules", json=second.model_dump(mode="json")).status_code == 200
+        # Exact replay of the latest revision stays idempotent.
+        assert client.post("/v1/capsules", json=second.model_dump(mode="json")).status_code == 200
+        # Rewriting an existing revision or skipping a revision is still refused.
+        assert client.post("/v1/capsules", json=rewritten.model_dump(mode="json")).status_code == 409
+        assert client.post("/v1/capsules", json=skipped.model_dump(mode="json")).status_code == 409
+
+        latest = client.get("/v1/capsules/T1")
+        assert latest.status_code == 200
+        assert latest.json()["capsule_id"] == "C1"
+        assert latest.json()["revision"] == 2

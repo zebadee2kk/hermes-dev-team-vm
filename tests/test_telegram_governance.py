@@ -247,7 +247,7 @@ def test_owner_callback_applies_action_and_persists_offset(tmp_path: Path) -> No
 
 def test_wrong_owner_chat_or_tampered_callback_never_reaches_forge(tmp_path: Path) -> None:
     decision = _decision()
-    service, bot, forge, _, codec = _service(tmp_path, [decision])
+    service, bot, forge, store, codec = _service(tmp_path, [decision])
     notification = service.register_notification(
         MobileNotificationRequest(
             decision_id=decision.decision_id,
