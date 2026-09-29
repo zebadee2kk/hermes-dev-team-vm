@@ -188,3 +188,38 @@ def test_losing_a_race_to_an_identical_checkpoint_is_idempotent(tmp_path, monkey
     outcome, latest = asyncio.run(scenario())
     assert outcome == "conflict"
     assert (latest.capsule_id, latest.revision, latest.objective) == ("C1", 2, "o")
+
+
+def test_task_evidence_is_readable(tmp_path) -> None:
+    from forge_controller.contracts import RealityAnchor
+
+    url = f"sqlite+aiosqlite:///{tmp_path / 'evidence.db'}"
+    app = create_app(database_url=url, auto_create_schema=True)
+    first = TaskCapsule(capsule_id="C1", revision=1, project_id="P1", task_id="T1",
+                        objective="o", acceptance=["a"])
+    anchors = [
+        RealityAnchor(anchor_id=f"A{i}", project_id="P1", task_id="T1", type="TEST_EXECUTION",
+                      claim_ref="tests", workspace_revision="a" * 40,
+                      observed_at=datetime(2026, 9, 29, 10, i, tzinfo=UTC),
+                      result={"passed": i != 0}, executor=f"worker-{i}")
+        for i in range(3)
+    ]
+    other = anchors[0].model_copy(update={"anchor_id": "OTHER", "task_id": "T2"})
+
+    with TestClient(app) as client:
+        client.post("/v1/capsules", json=first.model_dump(mode="json"))
+        client.post("/v1/capsules", json=first.model_copy(update={"revision": 2}).model_dump(mode="json"))
+        for anchor in [anchors[2], anchors[0], anchors[1], other]:
+            assert client.post("/v1/anchors", json=anchor.model_dump(mode="json")).status_code == 200
+
+        listed = client.get("/v1/anchors", params={"task_id": "T1"})
+        assert listed.status_code == 200
+        assert [a["anchor_id"] for a in listed.json()] == ["A0", "A1", "A2"]
+        assert [a["result"]["passed"] for a in listed.json()] == [False, True, True]
+        assert client.get("/v1/anchors", params={"task_id": "none"}).json() == []
+        assert client.get("/v1/anchors").status_code == 422  # task_id is required
+
+        history = client.get("/v1/capsules/T1/history")
+        assert [c["revision"] for c in history.json()] == [1, 2]
+        assert {c["capsule_id"] for c in history.json()} == {"C1"}
+        assert client.get("/v1/capsules/none/history").json() == []

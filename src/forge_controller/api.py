@@ -146,6 +146,16 @@ def create_app(
             raise HTTPException(status_code=404, detail="Task Capsule not found")
         return capsule
 
+    @app.get("/v1/capsules/{task_id}/history", response_model=list[TaskCapsule])
+    async def capsule_history(task_id: str, request: Request) -> list[TaskCapsule]:
+        """Every checkpointed revision of a task's capsule, oldest first (read-only)."""
+        return await repository(request).capsule_history(task_id)
+
+    @app.get("/v1/anchors", response_model=list[RealityAnchor])
+    async def anchor_list(task_id: str, request: Request) -> list[RealityAnchor]:
+        """A task's Reality Anchors in observation order (read-only evidence trail)."""
+        return await repository(request).list_anchors(task_id)
+
     @app.post("/v1/anchors", response_model=RealityAnchor)
     async def anchor_record(anchor: RealityAnchor, request: Request) -> RealityAnchor:
         await repository(request).record_anchor(anchor)
