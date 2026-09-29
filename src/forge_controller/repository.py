@@ -65,18 +65,34 @@ class AssuranceRepository:
                     .limit(1)
                 )
                 latest = (await session.execute(stmt)).scalar_one_or_none()
+                # Any already-recorded revision: an exact replay (e.g. a retry after a timeout,
+                # even of an older revision) is idempotent; anything else rewrites history.
+                recorded = (
+                    await session.execute(
+                        select(TaskCapsuleRow).where(
+                            TaskCapsuleRow.task_id == capsule.task_id,
+                            TaskCapsuleRow.revision == capsule.revision,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if recorded is not None:
+                    if recorded.capsule_id == capsule.capsule_id and recorded.payload == payload:
+                        return
+                    raise CapsuleRevisionConflict(
+                        f"revision {capsule.revision} already exists for task {capsule.task_id}"
+                    )
                 if latest is None and capsule.revision != 1:
                     raise CapsuleRevisionConflict("first Task Capsule revision must be 1")
                 if latest is not None:
-                    if capsule.revision == latest.revision:
-                        if latest.capsule_id == capsule.capsule_id and latest.payload == payload:
-                            return
-                        raise CapsuleRevisionConflict(
-                            f"revision {capsule.revision} already exists for task {capsule.task_id}"
-                        )
                     if capsule.revision != latest.revision + 1:
                         raise CapsuleRevisionConflict(
                             f"expected revision {latest.revision + 1}, got {capsule.revision}"
+                        )
+                    # A task's capsule keeps one identity for its whole life.
+                    if capsule.capsule_id != latest.capsule_id:
+                        raise CapsuleRevisionConflict(
+                            f"capsule identity for task {capsule.task_id} cannot change "
+                            f"({latest.capsule_id} -> {capsule.capsule_id})"
                         )
                 session.add(
                     TaskCapsuleRow(

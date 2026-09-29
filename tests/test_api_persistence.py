@@ -105,3 +105,32 @@ def test_capsule_keeps_identity_across_monotonic_revisions(tmp_path) -> None:
         assert latest.status_code == 200
         assert latest.json()["capsule_id"] == "C1"
         assert latest.json()["revision"] == 2
+
+
+def test_capsule_identity_cannot_change_and_historical_replay_is_idempotent(tmp_path) -> None:
+    url = f"sqlite+aiosqlite:///{tmp_path / 'identity.db'}"
+    app = create_app(database_url=url, auto_create_schema=True)
+    first = TaskCapsule(
+        capsule_id="C1",
+        revision=1,
+        project_id="P1",
+        task_id="T1",
+        objective="fix the failing test",
+        acceptance=["test passes"],
+    )
+    second = first.model_copy(update={"revision": 2})
+    renamed = first.model_copy(update={"revision": 2, "capsule_id": "C2"})
+    rewritten_history = first.model_copy(update={"objective": "changed later"})
+
+    with TestClient(app) as client:
+        assert client.post("/v1/capsules", json=first.model_dump(mode="json")).status_code == 200
+        # A later revision must keep the task's capsule identity.
+        assert client.post("/v1/capsules", json=renamed.model_dump(mode="json")).status_code == 409
+        assert client.post("/v1/capsules", json=second.model_dump(mode="json")).status_code == 200
+        # An exact replay of an older revision (retry after timeout) is idempotent...
+        assert client.post("/v1/capsules", json=first.model_dump(mode="json")).status_code == 200
+        # ...but rewriting history is not.
+        response = client.post("/v1/capsules", json=rewritten_history.model_dump(mode="json"))
+        assert response.status_code == 409
+        latest = client.get("/v1/capsules/T1").json()
+        assert (latest["capsule_id"], latest["revision"]) == ("C1", 2)
