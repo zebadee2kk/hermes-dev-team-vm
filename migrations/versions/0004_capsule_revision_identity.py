@@ -9,6 +9,7 @@ Revises: 0003_governance_denial_state
 Create Date: 2026-09-28
 """
 
+import sqlalchemy as sa
 from alembic import op
 
 revision = "0004_capsule_revision_identity"
@@ -27,8 +28,21 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Downgrade is only safe while every capsule has a single revision.
-    if op.get_bind().dialect.name == "postgresql":
+    # capsule_id alone cannot key rows once a capsule has several revisions. Refuse before any
+    # DDL rather than delete revision history; pruning history would be data loss.
+    bind = op.get_bind()
+    duplicated = bind.execute(
+        sa.text(
+            "SELECT COUNT(*) FROM (SELECT capsule_id FROM task_capsules "
+            "GROUP BY capsule_id HAVING COUNT(*) > 1) AS multi"
+        )
+    ).scalar()
+    if duplicated:
+        raise RuntimeError(
+            f"refusing downgrade: {duplicated} Task Capsule(s) have multiple revisions; "
+            "export and resolve them explicitly before downgrading"
+        )
+    if bind.dialect.name == "postgresql":
         op.drop_constraint("task_capsules_pkey", "task_capsules", type_="primary")
         op.create_primary_key("task_capsules_pkey", "task_capsules", ["capsule_id"])
         return

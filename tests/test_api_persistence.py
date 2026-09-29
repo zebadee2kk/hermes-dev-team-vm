@@ -134,3 +134,57 @@ def test_capsule_identity_cannot_change_and_historical_replay_is_idempotent(tmp_
         assert response.status_code == 409
         latest = client.get("/v1/capsules/T1").json()
         assert (latest["capsule_id"], latest["revision"]) == ("C1", 2)
+
+
+def test_losing_a_race_to_an_identical_checkpoint_is_idempotent(tmp_path, monkeypatch) -> None:
+    """Deterministic race: the pre-insert lookup misses a row another writer just committed."""
+    import asyncio
+
+    from forge_controller.persistence import create_schema, make_engine, make_session_factory
+    from forge_controller.repository import AssuranceRepository, CapsuleRevisionConflict
+
+    async def scenario():
+        engine = make_engine(f"sqlite+aiosqlite:///{tmp_path / 'race.db'}")
+        await create_schema(engine)
+        repository = AssuranceRepository(make_session_factory(engine))
+        first = TaskCapsule(capsule_id="C1", revision=1, project_id="P1", task_id="T1",
+                            objective="o", acceptance=["a"])
+        second = first.model_copy(update={"revision": 2})
+        await repository.save_capsule(first)
+        await repository.save_capsule(second)  # the "other writer" wins revision 2
+
+        # The losing transaction read both "recorded?" and "latest" before the winner committed.
+        real_recorded = AssuranceRepository._recorded_revision
+        real_latest = AssuranceRepository._latest_row
+        calls = {"recorded": 0, "latest": 0}
+
+        async def stale_recorded(session, task_id, revision):
+            calls["recorded"] += 1
+            if calls["recorded"] == 1:
+                return None
+            return await real_recorded(session, task_id, revision)
+
+        async def stale_latest(session, task_id):
+            calls["latest"] += 1
+            if calls["latest"] == 1:
+                return await real_recorded(session, task_id, 1)  # pre-race latest = revision 1
+            return await real_latest(session, task_id)
+
+        monkeypatch.setattr(AssuranceRepository, "_recorded_revision",
+                            staticmethod(stale_recorded))
+        monkeypatch.setattr(AssuranceRepository, "_latest_row", staticmethod(stale_latest))
+        await repository.save_capsule(second)  # identical: the loser must succeed
+        calls.update(recorded=0, latest=0)
+        conflicting = second.model_copy(update={"objective": "different"})
+        try:
+            await repository.save_capsule(conflicting)
+            outcome = "accepted"
+        except CapsuleRevisionConflict:
+            outcome = "conflict"
+        latest = await repository.latest_capsule("T1")
+        await engine.dispose()
+        return outcome, latest
+
+    outcome, latest = asyncio.run(scenario())
+    assert outcome == "conflict"
+    assert (latest.capsule_id, latest.revision, latest.objective) == ("C1", 2, "o")
