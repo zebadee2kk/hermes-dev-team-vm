@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from .contracts import InferenceDeployment, RealityAnchor, TaskCapsule
 from .decision import classify_decision
+from .governance_api import _authorize_control
 from .governance_api import router as governance_router
 from .model_gateway import (
     ModelGatewayUnavailable,
@@ -148,12 +149,21 @@ def create_app(
 
     @app.get("/v1/capsules/{task_id}/history", response_model=list[TaskCapsule])
     async def capsule_history(task_id: str, request: Request) -> list[TaskCapsule]:
-        """Every checkpointed revision of a task's capsule, oldest first (read-only)."""
+        """Every checkpointed revision of a task's capsule, oldest first (read-only).
+
+        Earlier revisions carry previous worker results, so this needs the control credential.
+        """
+        _authorize_control(request)
         return await repository(request).capsule_history(task_id)
 
     @app.get("/v1/anchors", response_model=list[RealityAnchor])
     async def anchor_list(task_id: str, request: Request) -> list[RealityAnchor]:
-        """A task's Reality Anchors in observation order (read-only evidence trail)."""
+        """A task's Reality Anchors in observation order (read-only evidence trail).
+
+        Anchor payloads can hold reports, paths and reproduce commands, so this needs the
+        control credential.
+        """
+        _authorize_control(request)
         return await repository(request).list_anchors(task_id)
 
     @app.post("/v1/anchors", response_model=RealityAnchor)
