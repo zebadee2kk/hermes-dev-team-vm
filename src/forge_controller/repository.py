@@ -58,25 +58,28 @@ class AssuranceRepository:
         payload = capsule.model_dump(mode="json")
         try:
             async with self.sessions.begin() as session:
-                stmt = (
-                    select(TaskCapsuleRow)
-                    .where(TaskCapsuleRow.task_id == capsule.task_id)
-                    .order_by(TaskCapsuleRow.revision.desc())
-                    .limit(1)
-                )
-                latest = (await session.execute(stmt)).scalar_one_or_none()
+                latest = await self._latest_row(session, capsule.task_id)
+                # Any already-recorded revision: an exact replay (e.g. a retry after a timeout,
+                # even of an older revision) is idempotent; anything else rewrites history.
+                recorded = await self._recorded_revision(session, capsule.task_id, capsule.revision)
+                if recorded is not None:
+                    if recorded.capsule_id == capsule.capsule_id and recorded.payload == payload:
+                        return
+                    raise CapsuleRevisionConflict(
+                        f"revision {capsule.revision} already exists for task {capsule.task_id}"
+                    )
                 if latest is None and capsule.revision != 1:
                     raise CapsuleRevisionConflict("first Task Capsule revision must be 1")
                 if latest is not None:
-                    if capsule.revision == latest.revision:
-                        if latest.capsule_id == capsule.capsule_id and latest.payload == payload:
-                            return
-                        raise CapsuleRevisionConflict(
-                            f"revision {capsule.revision} already exists for task {capsule.task_id}"
-                        )
                     if capsule.revision != latest.revision + 1:
                         raise CapsuleRevisionConflict(
                             f"expected revision {latest.revision + 1}, got {capsule.revision}"
+                        )
+                    # A task's capsule keeps one identity for its whole life.
+                    if capsule.capsule_id != latest.capsule_id:
+                        raise CapsuleRevisionConflict(
+                            f"capsule identity for task {capsule.task_id} cannot change "
+                            f"({latest.capsule_id} -> {capsule.capsule_id})"
                         )
                 session.add(
                     TaskCapsuleRow(
@@ -101,9 +104,36 @@ class AssuranceRepository:
                     )
                 )
         except IntegrityError as exc:
+            # A concurrent writer won the insert. An identical checkpoint is an idempotent retry;
+            # anything else is a genuine conflict.
+            async with self.sessions() as session:
+                winner = await self._recorded_revision(session, capsule.task_id, capsule.revision)
+            if (
+                winner is not None
+                and winner.capsule_id == capsule.capsule_id
+                and winner.payload == payload
+            ):
+                return
             raise CapsuleRevisionConflict(
                 f"concurrent Task Capsule revision conflict for task {capsule.task_id}"
             ) from exc
+
+    @staticmethod
+    async def _latest_row(session, task_id: str) -> TaskCapsuleRow | None:
+        stmt = (
+            select(TaskCapsuleRow)
+            .where(TaskCapsuleRow.task_id == task_id)
+            .order_by(TaskCapsuleRow.revision.desc())
+            .limit(1)
+        )
+        return (await session.execute(stmt)).scalar_one_or_none()
+
+    @staticmethod
+    async def _recorded_revision(session, task_id: str, revision: int) -> TaskCapsuleRow | None:
+        stmt = select(TaskCapsuleRow).where(
+            TaskCapsuleRow.task_id == task_id, TaskCapsuleRow.revision == revision
+        )
+        return (await session.execute(stmt)).scalar_one_or_none()
 
     async def latest_capsule(self, task_id: str) -> TaskCapsule | None:
         async with self.sessions() as session:

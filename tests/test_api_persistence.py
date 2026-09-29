@@ -73,3 +73,118 @@ def test_durable_api_and_capsule_revision_guard(tmp_path) -> None:
         blocked = client.post("/v1/route", json={"capability": "coding", "sensitivity": "PUBLIC"})
         assert blocked.status_code == 503
         assert blocked.json()["detail"]["state"] == "WAITING_COMPUTE"
+
+
+def test_capsule_keeps_identity_across_monotonic_revisions(tmp_path) -> None:
+    url = f"sqlite+aiosqlite:///{tmp_path / 'revisions.db'}"
+    app = create_app(database_url=url, auto_create_schema=True)
+    first = TaskCapsule(
+        capsule_id="C1",
+        revision=1,
+        project_id="P1",
+        task_id="T1",
+        kanban_task_id="t_1",
+        objective="fix the failing test",
+        acceptance=["test passes"],
+    )
+    second = first.model_copy(update={"revision": 2, "open_questions": ["reviewed?"]})
+    skipped = first.model_copy(update={"revision": 4})
+    rewritten = second.model_copy(update={"objective": "something else"})
+
+    with TestClient(app) as client:
+        assert client.post("/v1/capsules", json=first.model_dump(mode="json")).status_code == 200
+        # Same capsule_id, next revision: the normal checkpoint path must succeed.
+        assert client.post("/v1/capsules", json=second.model_dump(mode="json")).status_code == 200
+        # Exact replay of the latest revision stays idempotent.
+        assert client.post("/v1/capsules", json=second.model_dump(mode="json")).status_code == 200
+        # Rewriting an existing revision or skipping a revision is still refused.
+        assert client.post("/v1/capsules", json=rewritten.model_dump(mode="json")).status_code == 409
+        assert client.post("/v1/capsules", json=skipped.model_dump(mode="json")).status_code == 409
+
+        latest = client.get("/v1/capsules/T1")
+        assert latest.status_code == 200
+        assert latest.json()["capsule_id"] == "C1"
+        assert latest.json()["revision"] == 2
+
+
+def test_capsule_identity_cannot_change_and_historical_replay_is_idempotent(tmp_path) -> None:
+    url = f"sqlite+aiosqlite:///{tmp_path / 'identity.db'}"
+    app = create_app(database_url=url, auto_create_schema=True)
+    first = TaskCapsule(
+        capsule_id="C1",
+        revision=1,
+        project_id="P1",
+        task_id="T1",
+        objective="fix the failing test",
+        acceptance=["test passes"],
+    )
+    second = first.model_copy(update={"revision": 2})
+    renamed = first.model_copy(update={"revision": 2, "capsule_id": "C2"})
+    rewritten_history = first.model_copy(update={"objective": "changed later"})
+
+    with TestClient(app) as client:
+        assert client.post("/v1/capsules", json=first.model_dump(mode="json")).status_code == 200
+        # A later revision must keep the task's capsule identity.
+        assert client.post("/v1/capsules", json=renamed.model_dump(mode="json")).status_code == 409
+        assert client.post("/v1/capsules", json=second.model_dump(mode="json")).status_code == 200
+        # An exact replay of an older revision (retry after timeout) is idempotent...
+        assert client.post("/v1/capsules", json=first.model_dump(mode="json")).status_code == 200
+        # ...but rewriting history is not.
+        response = client.post("/v1/capsules", json=rewritten_history.model_dump(mode="json"))
+        assert response.status_code == 409
+        latest = client.get("/v1/capsules/T1").json()
+        assert (latest["capsule_id"], latest["revision"]) == ("C1", 2)
+
+
+def test_losing_a_race_to_an_identical_checkpoint_is_idempotent(tmp_path, monkeypatch) -> None:
+    """Deterministic race: the pre-insert lookup misses a row another writer just committed."""
+    import asyncio
+
+    from forge_controller.persistence import create_schema, make_engine, make_session_factory
+    from forge_controller.repository import AssuranceRepository, CapsuleRevisionConflict
+
+    async def scenario():
+        engine = make_engine(f"sqlite+aiosqlite:///{tmp_path / 'race.db'}")
+        await create_schema(engine)
+        repository = AssuranceRepository(make_session_factory(engine))
+        first = TaskCapsule(capsule_id="C1", revision=1, project_id="P1", task_id="T1",
+                            objective="o", acceptance=["a"])
+        second = first.model_copy(update={"revision": 2})
+        await repository.save_capsule(first)
+        await repository.save_capsule(second)  # the "other writer" wins revision 2
+
+        # The losing transaction read both "recorded?" and "latest" before the winner committed.
+        real_recorded = AssuranceRepository._recorded_revision
+        real_latest = AssuranceRepository._latest_row
+        calls = {"recorded": 0, "latest": 0}
+
+        async def stale_recorded(session, task_id, revision):
+            calls["recorded"] += 1
+            if calls["recorded"] == 1:
+                return None
+            return await real_recorded(session, task_id, revision)
+
+        async def stale_latest(session, task_id):
+            calls["latest"] += 1
+            if calls["latest"] == 1:
+                return await real_recorded(session, task_id, 1)  # pre-race latest = revision 1
+            return await real_latest(session, task_id)
+
+        monkeypatch.setattr(AssuranceRepository, "_recorded_revision",
+                            staticmethod(stale_recorded))
+        monkeypatch.setattr(AssuranceRepository, "_latest_row", staticmethod(stale_latest))
+        await repository.save_capsule(second)  # identical: the loser must succeed
+        calls.update(recorded=0, latest=0)
+        conflicting = second.model_copy(update={"objective": "different"})
+        try:
+            await repository.save_capsule(conflicting)
+            outcome = "accepted"
+        except CapsuleRevisionConflict:
+            outcome = "conflict"
+        latest = await repository.latest_capsule("T1")
+        await engine.dispose()
+        return outcome, latest
+
+    outcome, latest = asyncio.run(scenario())
+    assert outcome == "conflict"
+    assert (latest.capsule_id, latest.revision, latest.objective) == ("C1", 2, "o")

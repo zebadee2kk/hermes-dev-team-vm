@@ -41,11 +41,12 @@ class TaskCapsuleRow(Base):
     __tablename__ = "task_capsules"
     __table_args__ = (UniqueConstraint("task_id", "revision", name="uq_capsule_task_revision"),)
 
+    # A capsule keeps its capsule_id across revisions; one row per (capsule_id, revision).
     capsule_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     project_id: Mapped[str] = mapped_column(String(128), index=True)
     task_id: Mapped[str] = mapped_column(String(128), index=True)
     kanban_task_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    revision: Mapped[int] = mapped_column(Integer)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
