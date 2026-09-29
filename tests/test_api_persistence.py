@@ -188,3 +188,56 @@ def test_losing_a_race_to_an_identical_checkpoint_is_idempotent(tmp_path, monkey
     outcome, latest = asyncio.run(scenario())
     assert outcome == "conflict"
     assert (latest.capsule_id, latest.revision, latest.objective) == ("C1", 2, "o")
+
+
+def test_task_evidence_is_readable(tmp_path, monkeypatch) -> None:
+    from forge_controller.contracts import RealityAnchor
+
+    monkeypatch.setenv("FORGE_CONTROL_KEY", "control-key-for-test")
+    auth = {"Authorization": "Bearer control-key-for-test"}
+
+    url = f"sqlite+aiosqlite:///{tmp_path / 'evidence.db'}"
+    app = create_app(database_url=url, auto_create_schema=True)
+    first = TaskCapsule(capsule_id="C1", revision=1, project_id="P1", task_id="T1",
+                        objective="o", acceptance=["a"])
+    anchors = [
+        RealityAnchor(anchor_id=f"A{i}", project_id="P1", task_id="T1", type="TEST_EXECUTION",
+                      claim_ref="tests", workspace_revision="a" * 40,
+                      observed_at=datetime(2026, 9, 29, 10, i, tzinfo=UTC),
+                      result={"passed": i != 0}, executor=f"worker-{i}")
+        for i in range(3)
+    ]
+    other = anchors[0].model_copy(update={"anchor_id": "OTHER", "task_id": "T2"})
+
+    with TestClient(app) as client:
+        client.post("/v1/capsules", json=first.model_dump(mode="json"))
+        client.post("/v1/capsules", json=first.model_copy(update={"revision": 2}).model_dump(mode="json"))
+        for anchor in [anchors[2], anchors[0], anchors[1], other]:
+            assert client.post("/v1/anchors", json=anchor.model_dump(mode="json")).status_code == 200
+
+        # Evidence payloads can hold reports and paths: the control credential is required.
+        for headers in ({}, {"Authorization": "Bearer wrong"}):
+            assert client.get("/v1/anchors", params={"task_id": "T1"},
+                              headers=headers).status_code == 401
+            assert client.get("/v1/capsules/T1/history", headers=headers).status_code == 401
+
+        listed = client.get("/v1/anchors", params={"task_id": "T1"}, headers=auth)
+        assert listed.status_code == 200
+        assert [a["anchor_id"] for a in listed.json()] == ["A0", "A1", "A2"]
+        assert [a["result"]["passed"] for a in listed.json()] == [False, True, True]
+        assert client.get("/v1/anchors", params={"task_id": "none"}, headers=auth).json() == []
+        assert client.get("/v1/anchors", headers=auth).status_code == 422  # task_id required
+
+        history = client.get("/v1/capsules/T1/history", headers=auth)
+        assert [c["revision"] for c in history.json()] == [1, 2]
+        assert {c["capsule_id"] for c in history.json()} == {"C1"}
+        assert client.get("/v1/capsules/none/history", headers=auth).json() == []
+
+
+def test_evidence_endpoints_refuse_when_no_control_key_is_configured(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("FORGE_CONTROL_KEY", raising=False)
+    app = create_app(database_url=f"sqlite+aiosqlite:///{tmp_path / 'x.db'}",
+                     auto_create_schema=True)
+    with TestClient(app) as client:
+        assert client.get("/v1/anchors", params={"task_id": "T1"}).status_code == 503
+        assert client.get("/v1/capsules/T1/history").status_code == 503

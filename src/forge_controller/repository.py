@@ -178,6 +178,26 @@ class AssuranceRepository:
                     )
                 )
 
+    async def list_anchors(self, task_id: str) -> list[RealityAnchor]:
+        async with self.sessions() as session:
+            stmt = (
+                select(RealityAnchorRow)
+                .where(RealityAnchorRow.task_id == task_id)
+                .order_by(RealityAnchorRow.observed_at, RealityAnchorRow.anchor_id)
+            )
+            rows = (await session.execute(stmt)).scalars().all()
+            return [RealityAnchor.model_validate(row.payload) for row in rows]
+
+    async def capsule_history(self, task_id: str) -> list[TaskCapsule]:
+        async with self.sessions() as session:
+            stmt = (
+                select(TaskCapsuleRow)
+                .where(TaskCapsuleRow.task_id == task_id)
+                .order_by(TaskCapsuleRow.revision)
+            )
+            rows = (await session.execute(stmt)).scalars().all()
+            return [TaskCapsule.model_validate(row.payload) for row in rows]
+
     async def record_anchor(self, anchor: RealityAnchor) -> None:
         async with self.sessions.begin() as session:
             session.add(
