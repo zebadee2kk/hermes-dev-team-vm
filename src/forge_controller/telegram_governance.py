@@ -156,7 +156,7 @@ class CallbackCodec:
         return parts[2], _CODE_ACTION[parts[1]]
 
     def _bound(self, body: str) -> bytes:
-        return f"{body}|{self.owner_chat_id}|{self.owner_user_id}".encode("utf-8")
+        return f"{body}|{self.owner_chat_id}|{self.owner_user_id}".encode()
 
 
 class TelegramBotClient:
