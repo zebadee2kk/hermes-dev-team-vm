@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -50,6 +51,12 @@ sys.exit(0)
 """
     )
     fake_hermes.chmod(0o755)
+    # bootstrap.sh checks the "Hermes host Python" via bare `python`; make that the interpreter
+    # running this test so the result does not depend on the machine's PATH.
+    # An exec wrapper, not a symlink: a symlinked venv interpreter would lose its venv.
+    python_shim = bin_dir / "python"
+    python_shim.write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n')
+    python_shim.chmod(0o755)
 
     env = os.environ.copy()
     env.update(
